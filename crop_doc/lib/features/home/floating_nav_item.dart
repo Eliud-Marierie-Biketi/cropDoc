@@ -6,6 +6,7 @@ class FloatingNavItem extends StatelessWidget {
   final String label;
   final bool isActive;
   final VoidCallback onTap;
+  final Color? iconColor;
 
   const FloatingNavItem({
     super.key,
@@ -13,26 +14,20 @@ class FloatingNavItem extends StatelessWidget {
     required this.label,
     required this.isActive,
     required this.onTap,
+    this.iconColor,
   });
 
   @override
   Widget build(BuildContext context) {
-    final color = isActive ? Colors.green : Colors.grey;
+    final color = iconColor ?? (isActive ? Colors.green : Colors.grey);
     return GestureDetector(
       onTap: onTap,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const SizedBox(height: 8),
-          Icon(icon, color: color, size: 28),
+          Icon(icon, color: color),
           const SizedBox(height: 4),
-          Text(
-            label,
-            style: TextStyle(
-              color: color,
-              fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
-            ),
-          ),
+          Text(label, style: TextStyle(color: color)),
         ],
       ),
     );

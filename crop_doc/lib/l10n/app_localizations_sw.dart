@@ -9,16 +9,16 @@ class AppLocalizationsSw extends AppLocalizations {
   AppLocalizationsSw([String locale = 'sw']) : super(locale);
 
   @override
-  String get appTitle => 'CropDoc';
+  String get appTitle => 'ZaoDoc';
 
   @override
-  String get loadingMessage => 'Inapakia CropDoc...';
+  String get loadingMessage => 'Inapakia ZaoDoc...';
 
   @override
   String get welcomeTitle => 'Karibu!';
 
   @override
-  String get welcomeDescription => 'CropDoc hukusaidia kutambua magonjwa ya mahindi kwa kutumia kamera au picha kutoka kwa galeria, kisha upate mapendekezo ya tiba bila intaneti.';
+  String get welcomeDescription => 'ZaoDoc hukusaidia kutambua magonjwa ya mahindi kwa kutumia kamera au picha kutoka kwa galeria, kisha upate mapendekezo ya tiba bila intaneti.';
 
   @override
   String get continueButton => 'Endelea';
@@ -91,4 +91,31 @@ class AppLocalizationsSw extends AppLocalizations {
 
   @override
   String get analyze => 'Chambua';
+
+  @override
+  String get profileSaved => 'Wasifu umehifadhiwa kikamilifu!';
+
+  @override
+  String get profileDetails => 'Maelezo ya Wasifu';
+
+  @override
+  String get processing => 'inachakata';
+
+  @override
+  String get noImageSelected => 'Hakuna picha iliyochaguliwa';
+
+  @override
+  String get errorOccurred => 'Hitilafu imetokea';
+
+  @override
+  String get diseaseDetection => 'Utambuzi wa Magonjwa';
+
+  @override
+  String get diseaseDetectionDesc => 'Tumia kamera kuchukua picha ya mmea wa mahindi ili kubaini magonjwa.';
+
+  @override
+  String get cropManagement => 'Usimamizi wa Mazao';
+
+  @override
+  String get cropManagementDesc => 'Pata rasilimali na vidokezo vya usimamizi mzuri wa mahindi.';
 }

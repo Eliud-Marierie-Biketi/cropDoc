@@ -1,9 +1,9 @@
 {
     "@@locale": "sw",
-    "appTitle": "CropDoc",
-    "loadingMessage": "Inapakia CropDoc...",
+    "appTitle": "ZaoDoc",
+    "loadingMessage": "Inapakia ZaoDoc...",
     "welcomeTitle": "Karibu!",
-    "welcomeDescription": "CropDoc hukusaidia kutambua magonjwa ya mahindi kwa kutumia kamera au picha kutoka kwa galeria, kisha upate mapendekezo ya tiba bila intaneti.",
+    "welcomeDescription": "ZaoDoc hukusaidia kutambua magonjwa ya mahindi kwa kutumia kamera au picha kutoka kwa galeria, kisha upate mapendekezo ya tiba bila intaneti.",
     "continueButton": "Endelea",
     "registerTitle": "Jisajili",
     "countryLabel": "Nchi",
@@ -27,5 +27,14 @@
     "maize": "Mahindi",
     "camera": "Kamera",
     "gallery": "Galeria",
-    "analyze": "Chambua"
+    "analyze": "Chambua",
+    "profileSaved": "Wasifu umehifadhiwa kikamilifu!",
+    "profileDetails": "Maelezo ya Wasifu",
+    "processing": "inachakata",
+    "noImageSelected": "Hakuna picha iliyochaguliwa",
+    "errorOccurred": "Hitilafu imetokea",
+    "diseaseDetection": "Utambuzi wa Magonjwa",
+    "diseaseDetectionDesc": "Tumia kamera kuchukua picha ya mmea wa mahindi ili kubaini magonjwa.",
+    "cropManagement": "Usimamizi wa Mazao",
+    "cropManagementDesc": "Pata rasilimali na vidokezo vya usimamizi mzuri wa mahindi."
 }

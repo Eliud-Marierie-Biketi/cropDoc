@@ -9,16 +9,16 @@ class AppLocalizationsEn extends AppLocalizations {
   AppLocalizationsEn([String locale = 'en']) : super(locale);
 
   @override
-  String get appTitle => 'CropDoc';
+  String get appTitle => 'ZaoDoc';
 
   @override
-  String get loadingMessage => 'Loading CropDoc...';
+  String get loadingMessage => 'Loading ZaoDoc...';
 
   @override
   String get welcomeTitle => 'Welcome!';
 
   @override
-  String get welcomeDescription => 'CropDoc helps you detect maize diseases using your camera or gallery and get treatment suggestions offline.';
+  String get welcomeDescription => 'ZaoDoc helps you detect maize diseases using your camera or gallery and get treatment suggestions offline.';
 
   @override
   String get continueButton => 'Continue';
@@ -91,4 +91,31 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get analyze => 'Analyze';
+
+  @override
+  String get profileSaved => 'Profile saved successfully!';
+
+  @override
+  String get profileDetails => 'Profile Details';
+
+  @override
+  String get processing => 'processing';
+
+  @override
+  String get noImageSelected => 'No image selected';
+
+  @override
+  String get errorOccurred => 'An error occurred';
+
+  @override
+  String get diseaseDetection => 'Disease Detection';
+
+  @override
+  String get diseaseDetectionDesc => ' Use the camera to capture an image of the maize plant to detect diseases.';
+
+  @override
+  String get cropManagement => 'Crop Management';
+
+  @override
+  String get cropManagementDesc => 'Access resources and tips for effective maize crop management.';
 }

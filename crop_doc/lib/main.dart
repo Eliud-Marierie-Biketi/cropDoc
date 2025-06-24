@@ -1,4 +1,5 @@
 // lib/main.dart
+// ignore: unused_import
 import 'package:crop_doc/core/database/reset_db.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -13,8 +14,8 @@ final appDatabaseProvider = Provider<AppDatabase>((ref) {
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  final db = AppDatabase(); // one single instance
-  await resetAndSeedDatabaseWithMaize(db);
+  final db = AppDatabase();
+  // await resetAndSeedDatabaseWithMaize(db);
 
   runApp(
     ProviderScope(

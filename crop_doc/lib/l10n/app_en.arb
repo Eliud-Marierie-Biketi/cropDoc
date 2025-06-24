@@ -1,9 +1,9 @@
 {
     "@@locale": "en",
-    "appTitle": "CropDoc",
-    "loadingMessage": "Loading CropDoc...",
+    "appTitle": "ZaoDoc",
+    "loadingMessage": "Loading ZaoDoc...",
     "welcomeTitle": "Welcome!",
-    "welcomeDescription": "CropDoc helps you detect maize diseases using your camera or gallery and get treatment suggestions offline.",
+    "welcomeDescription": "ZaoDoc helps you detect maize diseases using your camera or gallery and get treatment suggestions offline.",
     "continueButton": "Continue",
     "registerTitle": "Register",
     "countryLabel": "Country",
@@ -27,5 +27,14 @@
     "maize": "Maize",
     "camera": "Camera",
     "gallery": "Gallery",
-    "analyze": "Analyze"
+    "analyze": "Analyze",
+    "profileSaved": "Profile saved successfully!",
+    "profileDetails": "Profile Details",
+    "processing": "processing",
+    "noImageSelected": "No image selected",
+    "errorOccurred": "An error occurred",
+    "diseaseDetection": "Disease Detection",
+    "diseaseDetectionDesc": " Use the camera to capture an image of the maize plant to detect diseases.",
+    "cropManagement": "Crop Management",
+    "cropManagementDesc": "Access resources and tips for effective maize crop management."
 }

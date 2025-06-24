@@ -98,13 +98,13 @@ abstract class AppLocalizations {
   /// No description provided for @appTitle.
   ///
   /// In en, this message translates to:
-  /// **'CropDoc'**
+  /// **'ZaoDoc'**
   String get appTitle;
 
   /// No description provided for @loadingMessage.
   ///
   /// In en, this message translates to:
-  /// **'Loading CropDoc...'**
+  /// **'Loading ZaoDoc...'**
   String get loadingMessage;
 
   /// No description provided for @welcomeTitle.
@@ -116,7 +116,7 @@ abstract class AppLocalizations {
   /// No description provided for @welcomeDescription.
   ///
   /// In en, this message translates to:
-  /// **'CropDoc helps you detect maize diseases using your camera or gallery and get treatment suggestions offline.'**
+  /// **'ZaoDoc helps you detect maize diseases using your camera or gallery and get treatment suggestions offline.'**
   String get welcomeDescription;
 
   /// No description provided for @continueButton.
@@ -262,6 +262,60 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Analyze'**
   String get analyze;
+
+  /// No description provided for @profileSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Profile saved successfully!'**
+  String get profileSaved;
+
+  /// No description provided for @profileDetails.
+  ///
+  /// In en, this message translates to:
+  /// **'Profile Details'**
+  String get profileDetails;
+
+  /// No description provided for @processing.
+  ///
+  /// In en, this message translates to:
+  /// **'processing'**
+  String get processing;
+
+  /// No description provided for @noImageSelected.
+  ///
+  /// In en, this message translates to:
+  /// **'No image selected'**
+  String get noImageSelected;
+
+  /// No description provided for @errorOccurred.
+  ///
+  /// In en, this message translates to:
+  /// **'An error occurred'**
+  String get errorOccurred;
+
+  /// No description provided for @diseaseDetection.
+  ///
+  /// In en, this message translates to:
+  /// **'Disease Detection'**
+  String get diseaseDetection;
+
+  /// No description provided for @diseaseDetectionDesc.
+  ///
+  /// In en, this message translates to:
+  /// **' Use the camera to capture an image of the maize plant to detect diseases.'**
+  String get diseaseDetectionDesc;
+
+  /// No description provided for @cropManagement.
+  ///
+  /// In en, this message translates to:
+  /// **'Crop Management'**
+  String get cropManagement;
+
+  /// No description provided for @cropManagementDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Access resources and tips for effective maize crop management.'**
+  String get cropManagementDesc;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {
