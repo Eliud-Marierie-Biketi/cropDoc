@@ -66,6 +66,17 @@ class AppDatabase extends _$AppDatabase {
     await insertCrop(CropsCompanion(name: Value('Maize')));
   }
 
+  Future<void> deleteAllData() async {
+    // Clear all tables — use your actual DAOs
+    await batch((batch) {
+      batch.deleteAll(users);
+      batch.deleteAll(crops);
+      batch.deleteAll(cropDiseases);
+      batch.deleteAll(diseaseTreatments);
+      // Add others as needed
+    });
+  }
+
   // ===== USERS =====
   Future<int> insertUser(UsersCompanion user) => into(users).insert(user);
   Future<List<User>> getUsers() => select(users).get();

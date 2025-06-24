@@ -118,4 +118,16 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get cropManagementDesc => 'Access resources and tips for effective maize crop management.';
+
+  @override
+  String get settingsTitle => 'Settings';
+
+  @override
+  String get languageLabel => 'Language';
+
+  @override
+  String get themeLabel => 'Theme';
+
+  @override
+  String get logoutButton => 'Clear Data / Logout';
 }

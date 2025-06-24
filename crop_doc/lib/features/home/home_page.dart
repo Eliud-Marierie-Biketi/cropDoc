@@ -71,89 +71,79 @@ class _HomePageState extends ConsumerState<HomePage> {
   ) {
     return PreferredSize(
       preferredSize: const Size.fromHeight(kToolbarHeight),
-      child: ClipRRect(
-        borderRadius: const BorderRadius.only(
-          bottomLeft: Radius.circular(20),
-          bottomRight: Radius.circular(20),
+
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.transparent,
+
+          border: const Border(
+            bottom: BorderSide(color: Colors.green, width: 2.0),
+          ),
         ),
-        child: Container(
-          decoration: BoxDecoration(
-            color: Colors.transparent,
-            borderRadius: const BorderRadius.only(
-              bottomLeft: Radius.circular(20),
-              bottomRight: Radius.circular(20),
-            ),
-            border: const Border(
-              bottom: BorderSide(color: Colors.green, width: 2.0),
+        child: AppBar(
+          title: Padding(
+            padding: const EdgeInsets.only(left: 8.0),
+            child: Text(
+              t.appTitle,
+              style: GoogleFonts.poppins(
+                fontWeight: FontWeight.w600,
+                fontSize: 20,
+                color: theme.colorScheme.onSurface,
+              ),
             ),
           ),
-          child: AppBar(
-            title: Padding(
-              padding: const EdgeInsets.only(left: 8.0),
-              child: Text(
-                t.appTitle,
-                style: GoogleFonts.poppins(
-                  fontWeight: FontWeight.w600,
-                  fontSize: 20,
-                  color: theme.colorScheme.onSurface,
-                ),
-              ),
+          centerTitle: false, // Move title to the left
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          flexibleSpace: GlassmorphicContainer(
+            width: double.infinity,
+            height: double.infinity,
+            borderRadius: 0,
+            blur: 20,
+            alignment: Alignment.center,
+            border: 0,
+            linearGradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                theme.colorScheme.surface.withAlpha(230),
+                theme.colorScheme.surface.withAlpha(180),
+              ],
             ),
-            centerTitle: false, // Move title to the left
-            backgroundColor: Colors.transparent,
-            elevation: 0,
-            flexibleSpace: GlassmorphicContainer(
-              width: double.infinity,
-              height: double.infinity,
-              borderRadius: 0,
-              blur: 20,
-              alignment: Alignment.center,
-              border: 0,
-              linearGradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [
-                  theme.colorScheme.surface.withAlpha(230),
-                  theme.colorScheme.surface.withAlpha(180),
-                ],
-              ),
-              borderGradient: const LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [Colors.transparent, Colors.transparent],
-              ),
-              child: const SizedBox.expand(),
+            borderGradient: const LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [Colors.transparent, Colors.transparent],
             ),
-            actions: [
-              IconButton(
-                    icon: Icon(
-                      LucideIcons.refreshCw,
-                      color: theme.colorScheme.primary,
-                    ),
-                    tooltip: t.analyze,
-                    onPressed: () => _showSyncAnimation(context),
-                  )
-                  .animate(onPlay: (controller) => controller.repeat())
-                  .shimmer(
-                    duration: 2000.ms,
-                    color: theme.colorScheme.secondary.withAlpha(77),
+            child: const SizedBox.expand(),
+          ),
+          actions: [
+            IconButton(
+                  icon: Icon(
+                    LucideIcons.refreshCw,
+                    color: theme.colorScheme.primary,
                   ),
-              IconButton(
-                icon: Icon(
-                  LucideIcons.settings,
-                  color: theme.colorScheme.primary,
+                  tooltip: t.analyze,
+                  onPressed: () => _showSyncAnimation(context),
+                )
+                .animate(onPlay: (controller) => controller.repeat())
+                .shimmer(
+                  duration: 2000.ms,
+                  color: theme.colorScheme.secondary.withAlpha(77),
                 ),
-                tooltip: t.samplesTab,
-                onPressed: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (context) => const SettingsPage(),
-                    ),
-                  );
-                },
+            IconButton(
+              icon: Icon(
+                LucideIcons.settings,
+                color: theme.colorScheme.primary,
               ),
-            ],
-          ),
+              tooltip: t.samplesTab,
+              onPressed: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(builder: (context) => const SettingsPage()),
+                );
+              },
+            ),
+          ],
         ),
       ),
     );
@@ -192,7 +182,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                 .fadeIn(),
             const SizedBox(height: 20),
             Text(
-              AppLocalizations.of(context)!.analyze,
+              AppLocalizations.of(context)!.loadingMessage,
               style: GoogleFonts.poppins(
                 color: Colors.white,
                 fontSize: 18,

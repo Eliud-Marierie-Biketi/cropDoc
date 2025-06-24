@@ -118,4 +118,16 @@ class AppLocalizationsSw extends AppLocalizations {
 
   @override
   String get cropManagementDesc => 'Pata rasilimali na vidokezo vya usimamizi mzuri wa mahindi.';
+
+  @override
+  String get settingsTitle => 'Mipangilio';
+
+  @override
+  String get languageLabel => 'Lugha';
+
+  @override
+  String get themeLabel => 'Mandhari';
+
+  @override
+  String get logoutButton => 'Futa Data / Toka';
 }

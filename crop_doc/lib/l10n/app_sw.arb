@@ -36,5 +36,9 @@
     "diseaseDetection": "Utambuzi wa Magonjwa",
     "diseaseDetectionDesc": "Tumia kamera kuchukua picha ya mmea wa mahindi ili kubaini magonjwa.",
     "cropManagement": "Usimamizi wa Mazao",
-    "cropManagementDesc": "Pata rasilimali na vidokezo vya usimamizi mzuri wa mahindi."
+    "cropManagementDesc": "Pata rasilimali na vidokezo vya usimamizi mzuri wa mahindi.",
+    "settingsTitle": "Mipangilio",
+    "languageLabel": "Lugha",
+    "themeLabel": "Mandhari",
+    "logoutButton": "Futa Data / Toka"
 }

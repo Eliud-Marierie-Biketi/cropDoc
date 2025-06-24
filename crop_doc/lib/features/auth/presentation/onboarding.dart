@@ -1,21 +1,23 @@
+// ignore: library_prefixes
 import 'dart:math' as Math;
-
 import 'package:crop_doc/features/auth/presentation/registration_page.dart';
 import 'package:crop_doc/l10n/app_localizations.dart';
+import 'package:crop_doc/shared/providers/locale_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:glassmorphism/glassmorphism.dart';
 
-class OnboardingPage extends StatefulWidget {
+class OnboardingPage extends ConsumerStatefulWidget {
   const OnboardingPage({super.key});
 
   @override
-  State<OnboardingPage> createState() => _OnboardingPageState();
+  ConsumerState<OnboardingPage> createState() => _OnboardingPageState();
 }
 
-class _OnboardingPageState extends State<OnboardingPage>
+class _OnboardingPageState extends ConsumerState<OnboardingPage>
     with SingleTickerProviderStateMixin {
   late AnimationController _animationController;
   final _pageController = PageController();
@@ -164,6 +166,32 @@ class _OnboardingPageState extends State<OnboardingPage>
     ).animate(delay: 500.ms).fadeIn();
   }
 
+  Widget _buildLanguagePicker() {
+    final locale = ref.watch(localeProvider);
+
+    return Align(
+      alignment: Alignment.topRight,
+      child: Padding(
+        padding: const EdgeInsets.only(top: 24, right: 24),
+        child: DropdownButton<Locale>(
+          value: locale ?? const Locale('en'),
+          underline: const SizedBox(),
+          dropdownColor: Colors.white,
+          icon: const Icon(Icons.language, color: Colors.black),
+          onChanged: (val) {
+            if (val != null) {
+              ref.read(localeProvider.notifier).setLocale(val);
+            }
+          },
+          items: const [
+            DropdownMenuItem(value: Locale('en'), child: Text("English")),
+            DropdownMenuItem(value: Locale('sw'), child: Text("Kiswahili")),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final t = AppLocalizations.of(context)!;
@@ -172,14 +200,11 @@ class _OnboardingPageState extends State<OnboardingPage>
     return Scaffold(
       body: Stack(
         children: [
-          // Animated background
           _buildBackground(),
-
-          // Content
+          _buildLanguagePicker(),
           SafeArea(
             child: Column(
               children: [
-                // App title with animation
                 Padding(
                   padding: const EdgeInsets.only(top: 40),
                   child:
@@ -203,10 +228,7 @@ class _OnboardingPageState extends State<OnboardingPage>
                           )
                           .slideY(begin: -0.5, end: 0),
                 ),
-
                 const SizedBox(height: 20),
-
-                // Feature cards with page view
                 SizedBox(
                   height: size.height * 0.55,
                   child: PageView.builder(
@@ -227,15 +249,9 @@ class _OnboardingPageState extends State<OnboardingPage>
                     },
                   ),
                 ),
-
                 const SizedBox(height: 20),
-
-                // Pagination indicators
                 _buildPagination(),
-
                 const Spacer(),
-
-                // Continue button
                 Padding(
                   padding: const EdgeInsets.only(
                     bottom: 40,
@@ -283,7 +299,7 @@ class _OnboardingPageState extends State<OnboardingPage>
   }
 }
 
-// Add this extension to AppLocalizations
+// Extend AppLocalizations for custom translation
 extension LocalizationExtension on AppLocalizations {
   String translate(String key) {
     switch (key) {
@@ -299,6 +315,10 @@ extension LocalizationExtension on AppLocalizations {
         return cropManagement;
       case 'cropManagementDesc':
         return cropManagementDesc;
+      case 'continueButton':
+        return continueButton;
+      case 'appTitle':
+        return appTitle;
       default:
         return key;
     }
