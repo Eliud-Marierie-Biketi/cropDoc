@@ -1,0 +1,25 @@
+// lib/main.dart
+import 'package:crop_doc/core/database/reset_db.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'core/database/app_database.dart';
+import 'app.dart';
+
+/// Provide the singleton database instance
+final appDatabaseProvider = Provider<AppDatabase>((ref) {
+  return AppDatabase();
+});
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  final db = AppDatabase(); // one single instance
+  await resetAndSeedDatabaseWithMaize(db);
+
+  runApp(
+    ProviderScope(
+      overrides: [appDatabaseProvider.overrideWithValue(db)],
+      child: const CropDocApp(),
+    ),
+  );
+}
