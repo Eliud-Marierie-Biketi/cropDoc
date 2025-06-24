@@ -15,7 +15,7 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   final db = AppDatabase();
-  await resetAndSeedDatabaseWithMaize(db);
+  // await resetAndSeedDatabaseWithMaize(db);
 
   runApp(
     ProviderScope(
