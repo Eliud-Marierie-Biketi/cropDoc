@@ -1,37 +1,47 @@
+import 'package:crop_doc/features/home/tabs/history_tab.dart';
+import 'package:crop_doc/features/home/tabs/profile_tab.dart';
+import 'package:crop_doc/features/home/tabs/samples_tab.dart';
+import 'package:crop_doc/features/home/tabs/scan_tab.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class MainShell extends StatefulWidget {
   final Widget child;
-  const MainShell({super.key, required this.child});
 
-  static const navItems = [
-    {'label': 'Scan', 'icon': LucideIcons.scan, 'route': '/scan'},
-    {'label': 'Samples', 'icon': LucideIcons.image, 'route': '/samples'},
-    {'label': 'History', 'icon': LucideIcons.history, 'route': '/history'},
-    {'label': 'Profile', 'icon': LucideIcons.user, 'route': '/profiles'},
-  ];
+  const MainShell({super.key, required this.child}); // ✅ Add this line
 
   @override
   State<MainShell> createState() => _MainShellState();
 }
 
 class _MainShellState extends State<MainShell> {
+  int _currentIndex = 0;
+
+  static const navItems = [
+    {'label': 'Scan', 'icon': LucideIcons.scan},
+    {'label': 'Samples', 'icon': LucideIcons.image},
+    {'label': 'History', 'icon': LucideIcons.history},
+    {'label': 'Profile', 'icon': LucideIcons.user},
+  ];
+
+  final List<Widget> _pages = const [
+    ScanPage(),
+    SamplesPage(),
+    HistoryPage(),
+    ProfilePage(),
+  ];
+
   @override
   Widget build(BuildContext context) {
-    final location = GoRouterState.of(context).uri.toString();
-    final currentIndex = MainShell.navItems.indexWhere(
-      (item) => location.startsWith(item['route']! as String),
-    );
+    Theme.of(context);
 
     // ignore: deprecated_member_use
     return WillPopScope(
       onWillPop: () async {
-        if (!location.startsWith('/scan')) {
-          context.go('/scan');
+        if (_currentIndex != 0) {
+          setState(() => _currentIndex = 0);
           return false;
         } else {
           SystemNavigator.pop();
@@ -44,7 +54,7 @@ class _MainShellState extends State<MainShell> {
         appBar: AppBar(
           toolbarHeight: 100,
           title: ClipRRect(
-            borderRadius: BorderRadius.circular(20), // Rounded corners
+            borderRadius: BorderRadius.circular(20),
             child: Image.asset(
               'assets/images/logo.png',
               height: 100,
@@ -58,18 +68,22 @@ class _MainShellState extends State<MainShell> {
             _buildBubbleIcon(
               context,
               icon: LucideIcons.settings,
-              onTap: () => context.push('/settings'),
+              onTap: () {
+                Navigator.pushNamed(context, '/settings');
+              },
             ),
             _buildBubbleIcon(
               context,
               icon: LucideIcons.user,
-              onTap: () => context.push('/profiles'),
+              onTap: () {
+                Navigator.pushNamed(context, '/profiles');
+              },
               size: 40,
               padding: 10,
             ),
           ],
         ),
-        body: widget.child,
+        body: IndexedStack(index: _currentIndex, children: _pages),
         bottomNavigationBar: ClipRRect(
           borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
           child: BottomAppBar(
@@ -79,18 +93,19 @@ class _MainShellState extends State<MainShell> {
             padding: EdgeInsets.zero,
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: List.generate(MainShell.navItems.length, (index) {
-                final isActive = index == currentIndex;
-                final item = MainShell.navItems[index];
+              children: List.generate(navItems.length, (index) {
+                final isActive = index == _currentIndex;
+                final item = navItems[index];
 
                 return FloatingNavItem(
                   icon: item['icon'] as IconData,
                   label: item['label'] as String,
                   isActive: isActive,
                   onTap: () {
-                    final targetRoute = item['route']! as String;
-                    if (targetRoute != location) {
-                      context.go(targetRoute);
+                    if (!isActive) {
+                      setState(() {
+                        _currentIndex = index;
+                      });
                     }
                   },
                 );
@@ -121,7 +136,7 @@ class _MainShellState extends State<MainShell> {
             shape: BoxShape.circle,
             color: theme.colorScheme.surfaceContainerHighest,
             border: Border.all(color: theme.colorScheme.onSurface, width: 1),
-            boxShadow: [
+            boxShadow: const [
               BoxShadow(
                 color: Colors.black12,
                 blurRadius: 4,
@@ -133,7 +148,7 @@ class _MainShellState extends State<MainShell> {
           child: Icon(
             icon,
             size: size,
-            color: isDarkMode ? Colors.white : Colors.black, // 🔥 Main Change
+            color: isDarkMode ? Colors.white : Colors.black,
           ),
         ),
       ),
@@ -176,7 +191,7 @@ class FloatingNavItem extends StatelessWidget {
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               color: isActive
-                  ? theme.colorScheme.primary.withAlpha(2)
+                  ? theme.colorScheme.primary.withAlpha(10)
                   : Colors.transparent,
               border: Border.all(color: theme.colorScheme.outline, width: 1),
             ),
@@ -192,9 +207,7 @@ class FloatingNavItem extends StatelessWidget {
             style: GoogleFonts.poppins(
               fontSize: 12,
               fontWeight: isActive ? FontWeight.w600 : FontWeight.w500,
-              color: isDarkMode
-                  ? Colors.white
-                  : Colors.black, // 💪 Always strong
+              color: isDarkMode ? Colors.white : Colors.black, // Strong text
             ),
           ),
         ],
