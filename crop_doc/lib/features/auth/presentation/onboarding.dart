@@ -1,6 +1,5 @@
 // ignore: library_prefixes
 import 'dart:math' as Math;
-import 'package:crop_doc/features/auth/presentation/registration_page.dart';
 import 'package:crop_doc/l10n/app_localizations.dart';
 import 'package:crop_doc/shared/providers/locale_provider.dart';
 import 'package:flutter/material.dart';
@@ -9,6 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:glassmorphism/glassmorphism.dart';
+import 'package:go_router/go_router.dart';
 
 class OnboardingPage extends ConsumerStatefulWidget {
   const OnboardingPage({super.key});
@@ -55,9 +55,7 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage>
   }
 
   void _continue() {
-    Navigator.of(context).pushReplacement(
-      MaterialPageRoute(builder: (_) => const RegistrationPage()),
-    );
+    context.go('/registration');
   }
 
   Widget _buildBackground() {
