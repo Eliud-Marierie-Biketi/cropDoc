@@ -5,13 +5,13 @@ import 'package:crop_doc/l10n/app_localizations.dart';
 import 'package:drift/drift.dart' hide Column;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:glassmorphism/glassmorphism.dart';
 import '../../../main.dart';
 import '../../../core/database/app_database.dart';
-import '../../home/home_page.dart';
 
 class RegistrationPage extends ConsumerStatefulWidget {
   const RegistrationPage({super.key});
@@ -155,9 +155,7 @@ class _RegistrationPageState extends ConsumerState<RegistrationPage>
       );
 
       if (!mounted) return;
-      Navigator.of(
-        context,
-      ).pushReplacement(MaterialPageRoute(builder: (_) => const HomePage()));
+      context.go('/onboarding');
     } finally {
       if (mounted) {
         setState(() => _isSubmitting = false);

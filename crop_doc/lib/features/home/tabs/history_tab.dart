@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
-class HistoryTab extends StatelessWidget {
-  const HistoryTab({super.key});
+class HistoryPage extends StatelessWidget {
+  const HistoryPage({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -16,22 +16,30 @@ class HistoryTab extends StatelessWidget {
       },
     );
 
-    return ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: dummyHistory.length,
-      itemBuilder: (context, index) {
-        final item = dummyHistory[index];
-        return Card(
-          child: ListTile(
-            leading: Image.asset(item['image']!, width: 50),
-            title: Text('${item['crop']} - ${item['disease']}'),
-            subtitle: Text('Confidence: ${item['confidence']}'),
-            onTap: () {
-              // Show details or allow re-analysis
-            },
-          ),
-        );
-      },
+    return Scaffold(
+      appBar: AppBar(title: const Text('Detection History'), centerTitle: true),
+      body: ListView.builder(
+        padding: const EdgeInsets.all(16),
+        itemCount: dummyHistory.length,
+        itemBuilder: (context, index) {
+          final item = dummyHistory[index];
+          return Card(
+            margin: const EdgeInsets.symmetric(vertical: 8),
+            child: ListTile(
+              leading: Image.asset(
+                item['image']!,
+                width: 50,
+                fit: BoxFit.cover,
+              ),
+              title: Text('${item['crop']} - ${item['disease']}'),
+              subtitle: Text('Confidence: ${item['confidence']}'),
+              onTap: () {
+                // Navigate to details page or perform action
+              },
+            ),
+          );
+        },
+      ),
     );
   }
 }

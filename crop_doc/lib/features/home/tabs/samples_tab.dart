@@ -6,8 +6,8 @@ import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:shimmer/shimmer.dart';
 
-class SampleTab extends HookWidget {
-  const SampleTab({super.key});
+class SamplesPage extends HookWidget {
+  const SamplesPage({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -24,50 +24,53 @@ class SampleTab extends HookWidget {
       return null;
     }, []);
 
-    return Padding(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Header
-          Row(
-            children: [
-              Icon(LucideIcons.image, color: colorScheme.primary, size: 24),
-              const SizedBox(width: 12),
-              Text(
-                'Sample Images',
-                style: GoogleFonts.poppins(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w600,
-                  color: colorScheme.onSurface,
-                ),
-              ),
-              const Spacer(),
-              IconButton(
-                icon: Icon(LucideIcons.filter, size: 20),
-                onPressed: () {},
-                tooltip: 'Filter',
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-
-          // Grid
-          Expanded(
-            child: isLoading.value
-                ? _buildShimmerGrid()
-                : sampleImages.isEmpty
-                ? _buildEmptyState()
-                : MasonryGridView.count(
-                    crossAxisCount: 2,
-                    mainAxisSpacing: 12,
-                    crossAxisSpacing: 12,
-                    itemCount: sampleImages.length,
-                    itemBuilder: (context, index) =>
-                        _buildImageCard(context, sampleImages[index], index),
+    return Scaffold(
+      appBar: AppBar(title: const Text('Samples'), centerTitle: true),
+      body: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Header
+            Row(
+              children: [
+                Icon(LucideIcons.image, color: colorScheme.primary, size: 24),
+                const SizedBox(width: 12),
+                Text(
+                  'Sample Images',
+                  style: GoogleFonts.poppins(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w600,
+                    color: colorScheme.onSurface,
                   ),
-          ),
-        ],
+                ),
+                const Spacer(),
+                IconButton(
+                  icon: Icon(LucideIcons.filter, size: 20),
+                  onPressed: () {},
+                  tooltip: 'Filter',
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+
+            // Grid
+            Expanded(
+              child: isLoading.value
+                  ? _buildShimmerGrid()
+                  : sampleImages.isEmpty
+                  ? _buildEmptyState()
+                  : MasonryGridView.count(
+                      crossAxisCount: 2,
+                      mainAxisSpacing: 12,
+                      crossAxisSpacing: 12,
+                      itemCount: sampleImages.length,
+                      itemBuilder: (context, index) =>
+                          _buildImageCard(context, sampleImages[index], index),
+                    ),
+            ),
+          ],
+        ),
       ),
     );
   }

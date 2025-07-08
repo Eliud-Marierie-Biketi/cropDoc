@@ -1,9 +1,7 @@
-// lib/features/splash/presentation/splash_screen.dart
-import 'package:crop_doc/features/auth/presentation/onboarding.dart';
-import 'package:crop_doc/features/home/home_page.dart';
+import 'package:crop_doc/core/database/app_database_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../main.dart';
+import 'package:go_router/go_router.dart';
 
 class SplashScreen extends ConsumerStatefulWidget {
   const SplashScreen({super.key});
@@ -29,12 +27,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
 
     if (!mounted) return;
 
-    Navigator.of(context).pushReplacement(
-      MaterialPageRoute(
-        builder: (_) =>
-            user == null ? const OnboardingPage() : const HomePage(),
-      ),
-    );
+    context.go(user == null ? '/onboarding' : '/scan');
   }
 
   @override
@@ -46,7 +39,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
           children: [
             CircularProgressIndicator(),
             SizedBox(height: 16),
-            Text("Loading CropDoc..."),
+            Text("Loading Zao..."),
           ],
         ),
       ),

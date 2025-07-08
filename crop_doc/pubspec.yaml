@@ -61,6 +61,7 @@ dependencies:
   flutter_staggered_grid_view: ^0.7.0
   shimmer: ^3.0.0
   flutter_launcher_icons: ^0.14.4
+  connectivity_plus: ^6.1.4
 
 
 dev_dependencies:
@@ -93,6 +94,7 @@ flutter:
     - assets/
     - assets/dummy_samples/
     - assets/images/zaodoc_logo.png
+    - assets/images/logo.png
 
 flutter_launcher_icons:
   android: true
