@@ -1,6 +1,10 @@
 import 'dart:io';
+import 'package:crop_doc/core/database/models/crops.dart';
+import 'package:crop_doc/core/services/crop_service.dart';
+import 'package:crop_doc/shared/widgets/go_to_dev_tools.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
+import 'package:go_router/go_router.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -9,15 +13,12 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:glassmorphism/glassmorphism.dart';
 
 import 'package:crop_doc/l10n/app_localizations.dart';
-import 'package:crop_doc/core/database/app_database.dart';
-import 'package:crop_doc/main.dart';
 
 class ScanPage extends HookConsumerWidget {
   const ScanPage({super.key});
 
   // Custom green colors for light and dark modes
   static const Color _lightGreenBackground = Color(0xFFD0F0C0);
-  static const Color _darkGreenBackground = Color(0xFF2F5D27);
 
   // Strong green border color for both modes
   static const Color _strongGreenBorder = Color(0xFF1B5E20);
@@ -31,14 +32,15 @@ class ScanPage extends HookConsumerWidget {
 
   Color _cardBackground(Brightness brightness) => brightness == Brightness.light
       ? _lightGreenBackground
-      : _darkGreenBackground;
+      : const Color.fromARGB(255, 119, 190, 106);
 
-  Color _borderColor(Brightness brightness) => _strongGreenBorder;
+  Color _borderColor(Brightness brightness) =>
+      const Color.fromARGB(255, 10, 50, 12);
 
+  @override
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final t = AppLocalizations.of(context)!;
-    final db = ref.read(appDatabaseProvider);
     final theme = Theme.of(context);
     final brightness = theme.brightness;
 
@@ -50,13 +52,33 @@ class ScanPage extends HookConsumerWidget {
       duration: const Duration(milliseconds: 500),
     );
 
-    // Load crops asynchronously
+    // Load crops from API
     useEffect(() {
       Future.microtask(() async {
-        final allCrops = await db.getCrops();
-        crops.value = allCrops;
-        if (allCrops.isNotEmpty) {
-          selectedCrop.value = allCrops.first;
+        try {
+          final allCrops = await fetchCropsFromServer();
+          crops.value = allCrops;
+          if (allCrops.isNotEmpty) {
+            selectedCrop.value = allCrops.first;
+          }
+        } catch (_) {
+          if (context.mounted) {
+            showDialog(
+              context: context,
+              builder: (_) => AlertDialog(
+                title: const Text("Error"),
+                content: const Text(
+                  "Failed to load crops. Check your connection.",
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () => context.pop(),
+                    child: const Text("OK"),
+                  ),
+                ],
+              ),
+            );
+          }
         }
       });
       return null;
@@ -77,16 +99,8 @@ class ScanPage extends HookConsumerWidget {
 
       isProcessing.value = true;
       try {
-        await Future.delayed(
-          const Duration(seconds: 2),
-        ); // Simulate processing delay
-
-        if (context.mounted) {
-          Navigator.of(context).pushNamed(
-            '/results',
-            arguments: {'image': imageFile.value!, 'crop': selectedCrop.value},
-          );
-        }
+        await Future.delayed(const Duration(seconds: 2)); // Simulate delay
+        if (context.mounted) context.push('/results');
       } finally {
         isProcessing.value = false;
       }
@@ -97,191 +111,182 @@ class ScanPage extends HookConsumerWidget {
           ? const Color(0xFFF1F9F0)
           : const Color(0xFF142B17),
       body: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            children: [
-              const SizedBox(height: 130), // <-- This line added
-              // Crop selector card with glassmorphism and strong green border
-              GlassmorphicContainer(
-                width: double.infinity,
-                height: 80,
-                borderRadius: 20,
-                blur: 20,
-                border: 2,
-                linearGradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [
-                    _safeWithOpacity(_cardBackground(brightness), 0.9),
-                    _safeWithOpacity(_cardBackground(brightness), 0.75),
-                  ],
-                ),
-                borderGradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [
-                    _safeWithOpacity(_borderColor(brightness), 0.9),
-                    _safeWithOpacity(_borderColor(brightness), 0.6),
-                  ],
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: Row(
-                    children: [
-                      Icon(
-                        LucideIcons.sprout,
-                        color: brightness == Brightness.light
-                            ? _borderColor(brightness)
-                            : Colors.lightGreenAccent.shade400,
-                        size: 28,
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: DropdownButton<Crop>(
-                          value: selectedCrop.value,
-                          isExpanded: true,
-                          underline: const SizedBox(),
-                          dropdownColor: _cardBackground(brightness),
-                          style: GoogleFonts.poppins(
-                            fontSize: 16,
-                            color: brightness == Brightness.light
-                                ? Colors.black87
-                                : Colors.white70,
-                          ),
-                          items: crops.value.map((crop) {
-                            return DropdownMenuItem(
-                              value: crop,
-                              child: Text(
-                                crop.name,
-                                style: GoogleFonts.poppins(),
-                              ),
-                            );
-                          }).toList(),
-                          onChanged: (value) => selectedCrop.value = value,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          children: [
+            const SizedBox(height: 130),
 
-              const SizedBox(height: 24),
-
-              // Image preview or placeholder
-              AnimatedSwitcher(
-                duration: const Duration(milliseconds: 500),
-                child: imageFile.value != null
-                    ? _buildImagePreview(
-                        imageFile.value!,
-                        controller,
-                        brightness,
-                      )
-                    : _buildPlaceholder(
-                        context,
-                        t,
-                        theme,
-                        pickImage,
-                        brightness,
-                      ),
-              ),
-
-              const SizedBox(height: 24),
-
-              // Action buttons: Camera and Gallery
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  _buildActionButton(
-                    context: context,
-                    icon: LucideIcons.camera,
-                    label: t.camera,
-                    onPressed: () => pickImage(ImageSource.camera),
-                    color: _borderColor(brightness),
-                    brightness: brightness,
-                  ),
-                  _buildActionButton(
-                    context: context,
-                    icon: LucideIcons.image,
-                    label: t.gallery,
-                    onPressed: () => pickImage(ImageSource.gallery),
-                    color: _borderColor(brightness),
-                    brightness: brightness,
-                  ),
+            // --- Crop dropdown ---
+            GlassmorphicContainer(
+              width: double.infinity,
+              height: 80,
+              borderRadius: 20,
+              blur: 20,
+              border: 2,
+              linearGradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  _safeWithOpacity(_cardBackground(brightness), 0.9),
+                  _safeWithOpacity(_cardBackground(brightness), 0.75),
                 ],
               ),
-
-              const SizedBox(height: 32),
-
-              // Analyze button with strong green background and border
-              SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: imageFile.value == null || isProcessing.value
-                          ? null
-                          : analyzeImage,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: _borderColor(brightness),
-                        foregroundColor: brightness == Brightness.light
-                            ? Colors.white
-                            : Colors.black,
-                        padding: const EdgeInsets.symmetric(vertical: 18),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
-                          side: BorderSide(
-                            color: Colors.green.shade900,
-                            width: 2,
-                          ),
-                        ),
-                        elevation: 6,
-                        shadowColor: _borderColor(brightness).withAlpha(120),
-                      ),
-                      child: isProcessing.value
-                          ? Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                CircularProgressIndicator(
-                                  color: brightness == Brightness.light
-                                      ? Colors.white
-                                      : Colors.black,
-                                  strokeWidth: 2,
-                                ),
-                                const SizedBox(width: 12),
-                                Text(
-                                  t.processing,
-                                  style: GoogleFonts.poppins(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              ],
-                            )
-                          : Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(LucideIcons.scan, size: 24),
-                                const SizedBox(width: 12),
-                                Text(
-                                  t.analyze,
-                                  style: GoogleFonts.poppins(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              ],
-                            ),
+              borderGradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  _safeWithOpacity(_borderColor(brightness), 0.9),
+                  _safeWithOpacity(_borderColor(brightness), 0.6),
+                ],
+              ),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Row(
+                  children: [
+                    Icon(
+                      LucideIcons.sprout,
+                      color: brightness == Brightness.light
+                          ? _borderColor(brightness)
+                          : Colors.lightGreenAccent.shade400,
+                      size: 28,
                     ),
-                  )
-                  .animate(onPlay: (controller) => controller.repeat())
-                  .shimmer(
-                    duration: const Duration(milliseconds: 1500),
-                    color: _safeWithOpacity(_borderColor(brightness), 0.35),
-                    angle: imageFile.value != null && !isProcessing.value
-                        ? 0.0
-                        : null,
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: DropdownButton<Crop>(
+                        value: selectedCrop.value,
+                        isExpanded: true,
+                        underline: const SizedBox(),
+                        dropdownColor: _cardBackground(brightness),
+                        style: GoogleFonts.poppins(
+                          fontSize: 16,
+                          color: brightness == Brightness.light
+                              ? Colors.black87
+                              : Colors.white70,
+                        ),
+                        items: crops.value.map((crop) {
+                          return DropdownMenuItem(
+                            value: crop,
+                            child: Text(
+                              crop.name,
+                              style: GoogleFonts.poppins(),
+                            ),
+                          );
+                        }).toList(),
+                        onChanged: (value) => selectedCrop.value = value,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 24),
+
+            // --- Image preview / placeholder ---
+            AnimatedSwitcher(
+              duration: const Duration(milliseconds: 500),
+              child: imageFile.value != null
+                  ? _buildImagePreview(imageFile.value!, controller, brightness)
+                  : _buildPlaceholder(context, t, theme, pickImage, brightness),
+            ),
+
+            const SizedBox(height: 24),
+
+            // --- Camera & Gallery buttons ---
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                _buildActionButton(
+                  context: context,
+                  icon: LucideIcons.camera,
+                  label: t.camera,
+                  onPressed: () => pickImage(ImageSource.camera),
+                  color: _borderColor(brightness),
+                  brightness: brightness,
+                ),
+                _buildActionButton(
+                  context: context,
+                  icon: LucideIcons.image,
+                  label: t.gallery,
+                  onPressed: () => pickImage(ImageSource.gallery),
+                  color: _borderColor(brightness),
+                  brightness: brightness,
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 20),
+            GoToDevToolsButton(),
+            const SizedBox(height: 32),
+
+            // --- Analyze button ---
+            SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: imageFile.value == null || isProcessing.value
+                        ? null
+                        : analyzeImage,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: _borderColor(brightness),
+                      foregroundColor: brightness == Brightness.light
+                          ? Colors.white
+                          : Colors.black,
+                      padding: const EdgeInsets.symmetric(vertical: 18),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        side: BorderSide(
+                          color: Colors.green.shade900,
+                          width: 2,
+                        ),
+                      ),
+                      elevation: 6,
+                      shadowColor: _borderColor(brightness).withAlpha(120),
+                    ),
+                    child: isProcessing.value
+                        ? Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              CircularProgressIndicator(
+                                color: brightness == Brightness.light
+                                    ? Colors.white
+                                    : Colors.black,
+                                strokeWidth: 2,
+                              ),
+                              const SizedBox(width: 12),
+                              Text(
+                                t.processing,
+                                style: GoogleFonts.poppins(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          )
+                        : Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(LucideIcons.scan, size: 24),
+                              const SizedBox(width: 12),
+                              Text(
+                                t.analyze,
+                                style: GoogleFonts.poppins(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
                   ),
-            ],
-          ),
+                )
+                .animate(onPlay: (controller) => controller.repeat())
+                .shimmer(
+                  duration: const Duration(milliseconds: 1500),
+                  color: _safeWithOpacity(_borderColor(brightness), 0.35),
+                  angle: imageFile.value != null && !isProcessing.value
+                      ? 0.0
+                      : null,
+                ),
+          ],
         ),
       ),
     );
@@ -424,12 +429,17 @@ class ScanPage extends HookConsumerWidget {
         icon: Icon(icon, size: 24),
         label: Text(label),
         style: ElevatedButton.styleFrom(
-          backgroundColor: isLight ? Colors.white : _darkGreenBackground,
+          backgroundColor: isLight
+              ? Colors.white
+              : const Color.fromARGB(255, 10, 10, 10),
           foregroundColor: color,
           padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
-            side: BorderSide(color: _strongGreenBorder, width: 2),
+            side: BorderSide(
+              color: const Color.fromARGB(255, 10, 10, 10),
+              width: 2,
+            ),
           ),
           elevation: 4,
           shadowColor: isLight

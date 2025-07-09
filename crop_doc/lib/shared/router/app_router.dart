@@ -1,5 +1,6 @@
 // shared/router/app_router.dart
 import 'package:crop_doc/features/auth/presentation/registration_page.dart';
+import 'package:crop_doc/features/result/results_page.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:crop_doc/features/home/home_page.dart';
@@ -31,6 +32,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/registration',
         builder: (_, __) => const RegistrationPage(),
       ),
+      GoRoute(path: '/results', builder: (_, __) => const ResultsPage()),
     ],
   );
 });

@@ -1,129 +1,140 @@
-// app_database.dart
+import 'dart:io';
+import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:crop_doc/core/services/sync_service.dart';
 import 'package:drift/drift.dart';
 import 'package:drift_sqflite/drift_sqflite.dart';
-import 'dart:io';
+import 'package:flutter/foundation.dart';
+import 'package:http/http.dart' as http;
 // ignore: depend_on_referenced_packages
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
 part 'app_database.g.dart';
 
+// ========== TABLE ==========
 class Users extends Table {
   IntColumn get id => integer().autoIncrement()();
+  TextColumn get serverId => text().nullable()();
   TextColumn get username => text().withDefault(const Constant(''))();
   TextColumn get country => text()();
   TextColumn get county => text().nullable()();
   TextColumn get role => text()();
   BoolColumn get consent => boolean()();
+  BoolColumn get isSynced => boolean().withDefault(const Constant(false))();
 }
 
-class Crops extends Table {
-  IntColumn get id => integer().autoIncrement()();
-  TextColumn get name => text()();
-}
-
-class CropDiseases extends Table {
-  IntColumn get id => integer().autoIncrement()();
-  IntColumn get cropId => integer().references(Crops, #id)();
-  TextColumn get name => text()();
-  TextColumn get characteristics => text()();
-}
-
-class DiseaseTreatments extends Table {
-  IntColumn get id => integer().autoIncrement()();
-  IntColumn get diseaseId => integer().references(CropDiseases, #id)();
-  IntColumn get cropId => integer().references(Crops, #id)();
-  TextColumn get name => text()();
-  TextColumn get instructions => text()();
-}
-
-@DriftDatabase(tables: [Users, Crops, CropDiseases, DiseaseTreatments])
+// ========== DATABASE ==========
+@DriftDatabase(tables: [Users])
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 2; // 🔼 incremented version
+  int get schemaVersion => 1;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
-    onUpgrade: (migrator, from, to) async {
-      if (from == 1) {
-        // Add new column for username
-        await migrator.addColumn(users, users.username);
-      }
+    onCreate: (migrator) async {
+      await migrator.createAll();
     },
-    onCreate: (migrator) => migrator.createAll(),
   );
 
-  Future<void> resetDatabase() async {
-    // Delete all rows from all tables
-    await delete(users).go();
-    await delete(crops).go();
-    await delete(cropDiseases).go();
-    await delete(diseaseTreatments).go();
-
-    // Insert default crop
-    await insertCrop(CropsCompanion(name: Value('Maize')));
-  }
-
-  Future<void> deleteAllData() async {
-    // Clear all tables — use your actual DAOs
-    await batch((batch) {
-      batch.deleteAll(users);
-      batch.deleteAll(crops);
-      batch.deleteAll(cropDiseases);
-      batch.deleteAll(diseaseTreatments);
-      // Add others as needed
-    });
-  }
-
-  // ===== USERS =====
+  // ========== USER OPERATIONS ==========
   Future<int> insertUser(UsersCompanion user) => into(users).insert(user);
+
   Future<List<User>> getUsers() => select(users).get();
+
   Future<User?> getFirstUser() async => (await getUsers()).firstOrNull;
+
+  Future<User?> getUserById(int id) =>
+      (select(users)..where((u) => u.id.equals(id))).getSingleOrNull();
+
   Future<bool> updateUser(User user) => update(users).replace(user);
+
   Future<int> deleteUserById(int id) =>
       (delete(users)..where((tbl) => tbl.id.equals(id))).go();
 
-  // ===== CROPS =====
-  Future<int> insertCrop(CropsCompanion crop) => into(crops).insert(crop);
-  Future<List<Crop>> getCrops() => select(crops).get();
-  Future<Crop?> getCropById(int id) =>
-      (select(crops)..where((c) => c.id.equals(id))).getSingleOrNull();
-  Future<bool> updateCrop(Crop crop) => update(crops).replace(crop);
-  Future<int> deleteCrop(int id) =>
-      (delete(crops)..where((c) => c.id.equals(id))).go();
+  Future<void> deleteAllUsers() async => delete(users).go();
 
-  // ===== DISEASES =====
-  Future<int> insertDisease(CropDiseasesCompanion disease) =>
-      into(cropDiseases).insert(disease);
-  Future<List<CropDisease>> getDiseases() => select(cropDiseases).get();
-  Future<List<CropDisease>> getDiseasesByCrop(int cropId) =>
-      (select(cropDiseases)..where((d) => d.cropId.equals(cropId))).get();
-  Future<bool> updateDisease(CropDisease disease) =>
-      update(cropDiseases).replace(disease);
-  Future<int> deleteDisease(int id) =>
-      (delete(cropDiseases)..where((d) => d.id.equals(id))).go();
+  // ========== SYNC HELPERS ==========
+  Future<List<User>> getUnsyncedUsers() =>
+      (select(users)..where((u) => u.isSynced.equals(false))).get();
 
-  // ===== TREATMENTS =====
-  Future<int> insertTreatment(DiseaseTreatmentsCompanion treatment) =>
-      into(diseaseTreatments).insert(treatment);
-  Future<List<DiseaseTreatment>> getTreatments() =>
-      select(diseaseTreatments).get();
-  Future<List<DiseaseTreatment>> getTreatmentsByDisease(int diseaseId) =>
-      (select(
-        diseaseTreatments,
-      )..where((t) => t.diseaseId.equals(diseaseId))).get();
-  Future<bool> updateTreatment(DiseaseTreatment treatment) =>
-      update(diseaseTreatments).replace(treatment);
-  Future<int> deleteTreatment(int id) =>
-      (delete(diseaseTreatments)..where((t) => t.id.equals(id))).go();
+  Future<void> markUserAsSynced(int id, String serverId) async {
+    final existing = await getUserById(id);
+    if (existing != null &&
+        (existing.serverId == null || existing.serverId!.isEmpty)) {
+      await (update(users)..where((u) => u.id.equals(id))).write(
+        UsersCompanion(isSynced: const Value(true), serverId: Value(serverId)),
+      );
+      if (kDebugMode) {
+        print("✅ markUserAsSynced: userId=$id → serverId=$serverId");
+      }
+    } else {
+      await (update(users)..where((u) => u.id.equals(id))).write(
+        const UsersCompanion(isSynced: Value(true)),
+      );
+      if (kDebugMode) {
+        print("ℹ️ markUserAsSynced: user already has serverId");
+      }
+    }
+  }
+
+  Future<void> deleteAllData() async {
+    await batch((batch) {
+      batch.deleteAll(users);
+    });
+  }
 }
 
+// ========== SINGLETON DATABASE ==========
+AppDatabase? _dbInstance;
+
+AppDatabase getDatabaseInstance() {
+  _dbInstance ??= AppDatabase();
+  return _dbInstance!;
+}
+
+void disposeDatabaseInstance() {
+  _dbInstance?.close();
+  _dbInstance = null;
+}
+
+// ========== DATABASE CONNECTION ==========
 LazyDatabase _openConnection() {
   return LazyDatabase(() async {
     final dbFolder = await getApplicationDocumentsDirectory();
     final file = File(p.join(dbFolder.path, 'cropdoc.sqlite'));
     return SqfliteQueryExecutor(path: file.path, logStatements: true);
   });
+}
+
+// ========== CONNECTIVITY CHECK ==========
+Future<bool> isConnectedToInternet() async {
+  final connectivityResult = await Connectivity().checkConnectivity();
+  if (connectivityResult == ConnectivityResult.none) return false;
+
+  try {
+    final response = await http
+        .get(Uri.parse('https://www.google.com'))
+        .timeout(const Duration(seconds: 7));
+    return response.statusCode == 200;
+  } catch (_) {
+    return false;
+  }
+}
+
+// ========== SYNC TRIGGER ==========
+Future<void> trySyncWithBackend(AppDatabase db) async {
+  final hasInternet = await isConnectedToInternet();
+  if (!hasInternet) return;
+
+  final localUser = await db.getFirstUser();
+  if (localUser == null) return;
+
+  await syncToServer(db);
+  await syncFromServer(db);
+
+  if (kDebugMode) {
+    print("✅ Sync completed from reconnect.");
+  }
 }

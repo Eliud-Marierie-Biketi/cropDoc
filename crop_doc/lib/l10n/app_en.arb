@@ -40,5 +40,7 @@
     "settingsTitle": "Settings",
     "languageLabel": "Language",
     "themeLabel": "Theme",
-    "logoutButton": "Clear Data / Logout"
+    "logoutButton": "Clear Data / Logout",
+    "results": "Results",
+    "sampleImages": "Sample Images"
 }

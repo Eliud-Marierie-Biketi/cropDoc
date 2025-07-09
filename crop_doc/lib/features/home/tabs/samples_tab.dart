@@ -1,3 +1,4 @@
+import 'package:crop_doc/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -11,6 +12,7 @@ class SamplesPage extends HookWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context)!;
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final isLoading = useState(true);
@@ -25,26 +27,24 @@ class SamplesPage extends HookWidget {
     }, []);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Samples'), centerTitle: true),
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            const SizedBox(height: 130), // <-- This line added
             // Header
             Row(
               children: [
                 Icon(LucideIcons.image, color: colorScheme.primary, size: 24),
-                const SizedBox(width: 12),
                 Text(
-                  'Sample Images',
+                  t.sampleImages,
                   style: GoogleFonts.poppins(
                     fontSize: 20,
                     fontWeight: FontWeight.w600,
                     color: colorScheme.onSurface,
                   ),
                 ),
-                const Spacer(),
                 IconButton(
                   icon: Icon(LucideIcons.filter, size: 20),
                   onPressed: () {},

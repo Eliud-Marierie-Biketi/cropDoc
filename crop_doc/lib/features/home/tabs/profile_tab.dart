@@ -1,8 +1,11 @@
 import 'package:crop_doc/core/database/app_database.dart';
 import 'package:crop_doc/core/database/app_database_provider.dart';
 import 'package:crop_doc/l10n/app_localizations.dart';
+import 'package:crop_doc/shared/providers/user_provider.dart'
+    hide appDatabaseProvider;
 import 'package:flutter/material.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
+import 'package:go_router/go_router.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:lucide_icons/lucide_icons.dart';
@@ -32,26 +35,65 @@ class ProfilePage extends HookConsumerWidget {
     return label;
   }
 
+  Future<void> _clearData(BuildContext context, WidgetRef ref) async {
+    final db = ref.read(appDatabaseProvider);
+
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text("Clear all data?"),
+        content: const Text(
+          "This will delete all local app data. Are you sure?",
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text("Cancel"),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text("Clear Data"),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      await db
+          .deleteAllData(); // <-- You must implement this in your AppDatabase
+      if (context.mounted) {
+        context.go('/onboarding');
+      }
+    }
+  }
+
+  @override
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final t = AppLocalizations.of(context)!;
-    final db = ref.read(appDatabaseProvider);
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
-    // Hook states
-    final name = useState<String>('Loading...');
+    // Watch userProvider
+    final userAsync = ref.watch(userProvider);
+
+    final name = useState<String>('  ');
     final country = useState<String>('Kenya');
     final county = useState<String>('Nairobi');
     final role = useState<String>('Farmer');
-    final loading = useState<bool>(true);
-    final userId = useState<int?>(null);
     final isSaving = useState<bool>(false);
+    final userId = useState<int?>(null);
+    final isLoading = useState<bool>(true); // ADD THIS
 
-    // Load user data from Drift
     useEffect(() {
-      Future.microtask(() async {
+      () async {
+        final db = AppDatabase(); // 🔄 NO provider
         final user = await db.getFirstUser();
+
         if (user != null) {
           name.value = user.username;
           country.value = user.country;
@@ -59,15 +101,17 @@ class ProfilePage extends HookConsumerWidget {
           role.value = user.role;
           userId.value = user.id;
         }
-        loading.value = false;
-      });
+
+        isLoading.value = false;
+      }();
+
       return null;
     }, []);
-
     Future<void> saveProfile() async {
       if (userId.value == null) return;
-
       isSaving.value = true;
+
+      final db = ref.read(appDatabaseProvider);
 
       final updatedUser = User(
         id: userId.value!,
@@ -76,15 +120,20 @@ class ProfilePage extends HookConsumerWidget {
         county: county.value,
         role: role.value,
         consent: true,
+        isSynced: false,
       );
 
       await db.updateUser(updatedUser);
+
+      // Refresh the userProvider to reflect the latest data
+      ref.invalidate(userProvider);
+
       isSaving.value = false;
 
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(t.profileDetails),
+            content: Text(AppLocalizations.of(context)!.profileDetails),
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12),
@@ -94,7 +143,7 @@ class ProfilePage extends HookConsumerWidget {
       }
     }
 
-    if (loading.value) {
+    if (userAsync.isLoading) {
       return Scaffold(
         appBar: AppBar(title: Text(t.profileDetails)),
         body: Center(
@@ -172,7 +221,7 @@ class ProfilePage extends HookConsumerWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      t.profileSaved,
+                      t.profileDetails,
                       style: GoogleFonts.poppins(
                         fontSize: 18,
                         fontWeight: FontWeight.w600,
@@ -300,6 +349,20 @@ class ProfilePage extends HookConsumerWidget {
               ),
             ),
             const SizedBox(height: 48),
+            // Clear data / logout button
+            ElevatedButton.icon(
+              onPressed: () => _clearData(context, ref),
+              icon: const Icon(Icons.logout),
+              label: Text(t.logoutButton),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red.shade700,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+            ),
           ],
         ),
       ),

@@ -130,4 +130,10 @@ class AppLocalizationsSw extends AppLocalizations {
 
   @override
   String get logoutButton => 'Futa Data / Toka';
+
+  @override
+  String get results => 'Matokeo';
+
+  @override
+  String get sampleImages => 'Picha za mfano';
 }

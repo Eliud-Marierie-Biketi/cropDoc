@@ -130,4 +130,10 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get logoutButton => 'Clear Data / Logout';
+
+  @override
+  String get results => 'Results';
+
+  @override
+  String get sampleImages => 'Sample Images';
 }

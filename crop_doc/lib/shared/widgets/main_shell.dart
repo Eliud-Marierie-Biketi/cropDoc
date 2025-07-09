@@ -1,22 +1,29 @@
+import 'package:crop_doc/core/database/app_database.dart';
+import 'package:crop_doc/core/database/app_database_provider.dart';
+import 'package:crop_doc/core/services/sync_service.dart';
 import 'package:crop_doc/features/home/tabs/history_tab.dart';
 import 'package:crop_doc/features/home/tabs/profile_tab.dart';
 import 'package:crop_doc/features/home/tabs/samples_tab.dart';
 import 'package:crop_doc/features/home/tabs/scan_tab.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-class MainShell extends StatefulWidget {
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+class MainShell extends ConsumerStatefulWidget {
   final Widget child;
 
-  const MainShell({super.key, required this.child}); // ✅ Add this line
+  const MainShell({super.key, required this.child});
 
   @override
-  State<MainShell> createState() => _MainShellState();
+  ConsumerState<MainShell> createState() => _MainShellState();
 }
 
-class _MainShellState extends State<MainShell> {
+class _MainShellState extends ConsumerState<MainShell> {
   int _currentIndex = 0;
 
   static const navItems = [
@@ -57,8 +64,8 @@ class _MainShellState extends State<MainShell> {
             borderRadius: BorderRadius.circular(20),
             child: Image.asset(
               'assets/images/logo.png',
-              height: 100,
-              width: 100,
+              height: 60,
+              width: 60,
               fit: BoxFit.cover,
             ),
           ),
@@ -69,17 +76,16 @@ class _MainShellState extends State<MainShell> {
               context,
               icon: LucideIcons.settings,
               onTap: () {
-                Navigator.pushNamed(context, '/settings');
+                context.push('/settings');
               },
             ),
             _buildBubbleIcon(
               context,
-              icon: LucideIcons.user,
-              onTap: () {
-                Navigator.pushNamed(context, '/profiles');
+              icon: LucideIcons.refreshCcw,
+              onTap: () async {
+                final db = ref.read(appDatabaseProvider);
+                await runSync(db);
               },
-              size: 40,
-              padding: 10,
             ),
           ],
         ),
@@ -153,6 +159,17 @@ class _MainShellState extends State<MainShell> {
         ),
       ),
     );
+  }
+}
+
+Future<void> runSync(AppDatabase db) async {
+  try {
+    await syncToServer(db);
+    await syncFromServer(db);
+  } catch (e) {
+    if (kDebugMode) {
+      print('Sync failed: $e');
+    }
   }
 }
 

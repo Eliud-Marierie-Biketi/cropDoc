@@ -340,6 +340,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Clear Data / Logout'**
   String get logoutButton;
+
+  /// No description provided for @results.
+  ///
+  /// In en, this message translates to:
+  /// **'Results'**
+  String get results;
+
+  /// No description provided for @sampleImages.
+  ///
+  /// In en, this message translates to:
+  /// **'Sample Images'**
+  String get sampleImages;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

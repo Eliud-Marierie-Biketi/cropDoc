@@ -1,4 +1,4 @@
-// ignore: library_prefixes
+import 'dart:convert';
 import 'dart:math' as Math;
 
 import 'package:crop_doc/l10n/app_localizations.dart';
@@ -7,10 +7,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:http/http.dart' as http;
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:glassmorphism/glassmorphism.dart';
-import '../../../main.dart';
 import '../../../core/database/app_database.dart';
 
 class RegistrationPage extends ConsumerStatefulWidget {
@@ -142,8 +142,35 @@ class _RegistrationPageState extends ConsumerState<RegistrationPage>
     setState(() => _isSubmitting = true);
 
     try {
-      final db = ref.read(appDatabaseProvider);
+      final db = getDatabaseInstance();
+      bool isSynced = false;
+      // ignore: unused_local_variable
+      String? serverId;
 
+      // --- Try registering with backend ---
+      try {
+        final response = await http.post(
+          Uri.parse('http://10.2.14.144:8000/api/users/'),
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode({
+            'username': username,
+            'country': country,
+            'county': country == "Kenya" ? county : null,
+            'role': role,
+            'consent': true,
+          }),
+        );
+
+        if (response.statusCode == 200 || response.statusCode == 201) {
+          final data = jsonDecode(response.body);
+          serverId = data['user_id']; // 👈 This is saved as server_id
+          isSynced = true;
+        }
+      } catch (e) {
+        print("⚠️ Server unreachable, will register offline: $e");
+      }
+
+      // --- Save user locally ---
       await db.insertUser(
         UsersCompanion.insert(
           username: Value(username),
@@ -151,15 +178,33 @@ class _RegistrationPageState extends ConsumerState<RegistrationPage>
           county: Value(country == "Kenya" ? county : null),
           role: role,
           consent: true,
+          isSynced: Value(isSynced),
+          serverId: Value(null),
         ),
       );
 
       if (!mounted) return;
-      context.go('/onboarding');
-    } finally {
+      context.go('/scan');
+    } catch (e, stack) {
+      print("❌ Local save failed: $e\n$stack");
+
       if (mounted) {
-        setState(() => _isSubmitting = false);
+        showDialog(
+          context: context,
+          builder: (_) => AlertDialog(
+            title: const Text("Error"),
+            content: const Text("Could not complete registration."),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text("OK"),
+              ),
+            ],
+          ),
+        );
       }
+    } finally {
+      if (mounted) setState(() => _isSubmitting = false);
     }
   }
 
