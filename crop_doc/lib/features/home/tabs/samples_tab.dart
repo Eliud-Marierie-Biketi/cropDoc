@@ -1,10 +1,17 @@
+// ignore_for_file: use_build_context_synchronously
+
+import 'dart:convert';
+import 'dart:io';
+
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:crop_doc/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
+import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:http/http.dart' as http;
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 import 'package:shimmer/shimmer.dart';
 
 class SamplesPage extends HookWidget {
@@ -17,12 +24,25 @@ class SamplesPage extends HookWidget {
     final colorScheme = theme.colorScheme;
     final isLoading = useState(true);
 
-    final sampleImages = useMemoized(() {
-      return List.generate(6, (i) => 'assets/dummy_samples/sample_$i.jpg');
-    });
+    final sampleImages = useState<List<String>>([]);
 
     useEffect(() {
-      Future.delayed(1.seconds, () => isLoading.value = false);
+      Future(() async {
+        try {
+          final res = await http.get(
+            Uri.parse('http://10.2.14.163:8000/api/sample-images/'),
+          );
+          if (res.statusCode == 200) {
+            final Map<String, dynamic> data = jsonDecode(res.body);
+            final List<String> imageUrls = List<String>.from(data['images']);
+            sampleImages.value = imageUrls;
+          }
+        } catch (e) {
+          debugPrint('Error loading samples: $e');
+        } finally {
+          isLoading.value = false;
+        }
+      });
       return null;
     }, []);
 
@@ -58,15 +78,18 @@ class SamplesPage extends HookWidget {
             Expanded(
               child: isLoading.value
                   ? _buildShimmerGrid()
-                  : sampleImages.isEmpty
+                  : sampleImages.value.isEmpty
                   ? _buildEmptyState()
                   : MasonryGridView.count(
                       crossAxisCount: 2,
                       mainAxisSpacing: 12,
                       crossAxisSpacing: 12,
-                      itemCount: sampleImages.length,
-                      itemBuilder: (context, index) =>
-                          _buildImageCard(context, sampleImages[index], index),
+                      itemCount: sampleImages.value.length,
+                      itemBuilder: (context, index) => _buildImageCard(
+                        context,
+                        sampleImages.value[index],
+                        index,
+                      ),
                     ),
             ),
           ],
@@ -87,11 +110,14 @@ class SamplesPage extends HookWidget {
           borderRadius: BorderRadius.circular(16),
           child: Stack(
             children: [
-              Image.asset(
-                imagePath,
+              CachedNetworkImage(
+                imageUrl: imagePath,
                 fit: BoxFit.cover,
                 height: 200,
                 width: double.infinity,
+                placeholder: (context, url) =>
+                    Container(height: 200, color: Colors.grey[300]),
+                errorWidget: (context, url, error) => const Icon(Icons.error),
               ),
               Positioned(
                 bottom: 0,
@@ -138,7 +164,10 @@ class SamplesPage extends HookWidget {
                   child: IconButton(
                     icon: Icon(LucideIcons.scan, size: 20),
                     color: Theme.of(context).colorScheme.primary,
-                    onPressed: () => _simulateScan(context),
+                    onPressed: () => simulateScanFromUrl(
+                      context: context,
+                      imageUrl: imagePath,
+                    ),
                   ),
                 ),
               ),
@@ -253,7 +282,7 @@ class SamplesPage extends HookWidget {
                 ElevatedButton.icon(
                   onPressed: () {
                     Navigator.pop(context);
-                    _simulateScan(context);
+                    simulateScan(context: context, imageFile: File(imagePath));
                   },
                   icon: Icon(LucideIcons.scan, size: 16),
                   label: Text('Scan This'),
@@ -275,7 +304,51 @@ class SamplesPage extends HookWidget {
     );
   }
 
-  void _simulateScan(BuildContext context) {
+  void simulateScanFromUrl({
+    required BuildContext context,
+    required String imageUrl,
+  }) async {
+    // Show loading
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const CircularProgressIndicator(),
+            const SizedBox(height: 20),
+            Text('Downloading sample...', style: GoogleFonts.poppins()),
+          ],
+        ),
+      ),
+    );
+
+    try {
+      final response = await http.get(Uri.parse(imageUrl));
+      if (response.statusCode == 200) {
+        final tempDir = Directory.systemTemp;
+        final tempFile = File('${tempDir.path}/sample.jpg');
+        await tempFile.writeAsBytes(response.bodyBytes);
+
+        Navigator.pop(context); // close download dialog
+        simulateScan(context: context, imageFile: tempFile);
+      } else {
+        throw Exception('Failed to download image');
+      }
+    } catch (e) {
+      Navigator.pop(context);
+      _showErrorDialog(context, 'Failed to load image: $e');
+    }
+  }
+
+  void simulateScan({
+    required BuildContext context,
+    required File imageFile,
+  }) async {
+    // Show loading dialog
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -293,11 +366,51 @@ class SamplesPage extends HookWidget {
       ),
     );
 
-    Future.delayed(2.seconds, () {
-      // ignore: use_build_context_synchronously
-      Navigator.pop(context);
-      // ignore: use_build_context_synchronously
-      Navigator.pushNamed(context, '/results');
-    });
+    try {
+      final uri = Uri.parse('https://10.2.14.163:8000/api/mock-classify/');
+      final request = http.MultipartRequest('POST', uri);
+
+      request.files.add(
+        await http.MultipartFile.fromPath(
+          'image', // replace with your actual field name
+          imageFile.path,
+        ),
+      );
+
+      final response = await request.send();
+      final responseBody = await response.stream.bytesToString();
+
+      context.pop(); // Close loading dialog
+
+      if (response.statusCode == 200) {
+        final responseData = jsonDecode(responseBody);
+
+        context.push('/results', extra: responseData);
+      } else {
+        _showErrorDialog(
+          context,
+          'Server responded with ${response.statusCode}',
+        );
+      }
+    } catch (e) {
+      context.pop(); // Ensure dialog is closed on error
+      _showErrorDialog(context, 'Error analyzing image: $e');
+    }
+  }
+
+  void _showErrorDialog(BuildContext context, String message) {
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text("Error"),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("OK"),
+          ),
+        ],
+      ),
+    );
   }
 }

@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'package:crop_doc/core/database/app_database.dart';
 import 'package:http/http.dart' as http;
 
-const baseUrl = 'http://10.2.14.144:8000/api';
+const baseUrl = 'http://10.2.14.163:8000/api';
 
 /// Push unsynced users to Django backend
 Future<void> syncToServer(AppDatabase db) async {

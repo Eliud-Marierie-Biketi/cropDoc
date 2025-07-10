@@ -1,3 +1,5 @@
+// ignore_for_file: deprecated_member_use
+
 import 'package:crop_doc/core/database/app_database.dart';
 import 'package:crop_doc/core/database/app_database_provider.dart';
 import 'package:crop_doc/core/services/sync_service.dart';
@@ -11,8 +13,10 @@ import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:google_fonts/google_fonts.dart';
-
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+/// Global key to control tab switching from anywhere (e.g., after navigation)
+final GlobalKey<MainShellState> mainShellKey = GlobalKey<MainShellState>();
 
 class MainShell extends ConsumerStatefulWidget {
   final Widget child;
@@ -20,10 +24,10 @@ class MainShell extends ConsumerStatefulWidget {
   const MainShell({super.key, required this.child});
 
   @override
-  ConsumerState<MainShell> createState() => _MainShellState();
+  ConsumerState<MainShell> createState() => MainShellState();
 }
 
-class _MainShellState extends ConsumerState<MainShell> {
+class MainShellState extends ConsumerState<MainShell> {
   int _currentIndex = 0;
 
   static const navItems = [
@@ -40,11 +44,17 @@ class _MainShellState extends ConsumerState<MainShell> {
     ProfilePage(),
   ];
 
+  /// Allows switching tabs programmatically from outside
+  void switchTab(int index) {
+    if (index >= 0 && index < _pages.length) {
+      setState(() {
+        _currentIndex = index;
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    Theme.of(context);
-
-    // ignore: deprecated_member_use
     return WillPopScope(
       onWillPop: () async {
         if (_currentIndex != 0) {
@@ -75,9 +85,7 @@ class _MainShellState extends ConsumerState<MainShell> {
             _buildBubbleIcon(
               context,
               icon: LucideIcons.settings,
-              onTap: () {
-                context.push('/settings');
-              },
+              onTap: () => context.push('/settings'),
             ),
             _buildBubbleIcon(
               context,
@@ -162,13 +170,21 @@ class _MainShellState extends ConsumerState<MainShell> {
   }
 }
 
-Future<void> runSync(AppDatabase db) async {
+Future<void> runSync(AppDatabase db, {VoidCallback? onSyncComplete}) async {
   try {
     await syncToServer(db);
     await syncFromServer(db);
+
+    if (kDebugMode) {
+      print('✅ Sync complete');
+    }
+
+    if (onSyncComplete != null) {
+      onSyncComplete(); // 🔁 notify UI
+    }
   } catch (e) {
     if (kDebugMode) {
-      print('Sync failed: $e');
+      print('❌ Sync failed: $e');
     }
   }
 }
@@ -224,7 +240,7 @@ class FloatingNavItem extends StatelessWidget {
             style: GoogleFonts.poppins(
               fontSize: 12,
               fontWeight: isActive ? FontWeight.w600 : FontWeight.w500,
-              color: isDarkMode ? Colors.white : Colors.black, // Strong text
+              color: isDarkMode ? Colors.white : Colors.black,
             ),
           ),
         ],

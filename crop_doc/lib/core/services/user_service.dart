@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 class UserService {
-  static const String baseUrl = 'http://10.2.14.144:8000/api';
+  static const String baseUrl = 'http://10.2.14.163:8000/api';
 
   Future<http.Response> registerUser({
     required String username,

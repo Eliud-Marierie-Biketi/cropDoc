@@ -43,6 +43,7 @@ dependencies:
   image_picker: ^1.1.2
   cached_network_image: ^3.4.1
   permission_handler: ^12.0.0+1
+  screenshot: ^3.0.0
   http: ^1.4.0
   path_provider: ^2.1.5
   android_path_provider: ^0.3.1
@@ -101,3 +102,11 @@ flutter_launcher_icons:
   ios: true
   image_path: "assets/images/zaodoc_logo.png"
   remove_alpha_ios: true
+
+flutter_native_splash:
+  color: "#4CAF50" # Material green
+  image: assets/images/logo.png
+  android: true
+  ios: true
+  android_gravity: center
+  ios_content_mode: center

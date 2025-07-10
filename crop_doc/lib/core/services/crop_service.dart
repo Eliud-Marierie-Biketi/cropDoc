@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'package:crop_doc/core/database/models/crops.dart';
 import 'package:http/http.dart' as http;
 
-const baseUrl = 'http://10.2.14.144:8000/api';
+const baseUrl = 'http://10.2.14.163:8000/api';
 
 Future<List<Crop>> fetchCropsFromServer() async {
   final res = await http.get(Uri.parse('$baseUrl/crops'));

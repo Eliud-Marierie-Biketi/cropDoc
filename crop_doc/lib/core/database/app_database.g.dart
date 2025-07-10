@@ -504,15 +504,480 @@ class UsersCompanion extends UpdateCompanion<User> {
   }
 }
 
+class $HistoryTable extends History with TableInfo<$HistoryTable, HistoryData> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $HistoryTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _imagePathMeta = const VerificationMeta(
+    'imagePath',
+  );
+  @override
+  late final GeneratedColumn<String> imagePath = GeneratedColumn<String>(
+    'image_path',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _cropNameMeta = const VerificationMeta(
+    'cropName',
+  );
+  @override
+  late final GeneratedColumn<String> cropName = GeneratedColumn<String>(
+    'crop_name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
+  static const VerificationMeta _diseaseMeta = const VerificationMeta(
+    'disease',
+  );
+  @override
+  late final GeneratedColumn<String> disease = GeneratedColumn<String>(
+    'disease',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _confidenceMeta = const VerificationMeta(
+    'confidence',
+  );
+  @override
+  late final GeneratedColumn<String> confidence = GeneratedColumn<String>(
+    'confidence',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _timestampMeta = const VerificationMeta(
+    'timestamp',
+  );
+  @override
+  late final GeneratedColumn<DateTime> timestamp = GeneratedColumn<DateTime>(
+    'timestamp',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  static const VerificationMeta _recommendationsJsonMeta =
+      const VerificationMeta('recommendationsJson');
+  @override
+  late final GeneratedColumn<String> recommendationsJson =
+      GeneratedColumn<String>(
+        'recommendations_json',
+        aliasedName,
+        true,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+      );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    imagePath,
+    cropName,
+    disease,
+    confidence,
+    timestamp,
+    recommendationsJson,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'history';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<HistoryData> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('image_path')) {
+      context.handle(
+        _imagePathMeta,
+        imagePath.isAcceptableOrUnknown(data['image_path']!, _imagePathMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_imagePathMeta);
+    }
+    if (data.containsKey('crop_name')) {
+      context.handle(
+        _cropNameMeta,
+        cropName.isAcceptableOrUnknown(data['crop_name']!, _cropNameMeta),
+      );
+    }
+    if (data.containsKey('disease')) {
+      context.handle(
+        _diseaseMeta,
+        disease.isAcceptableOrUnknown(data['disease']!, _diseaseMeta),
+      );
+    }
+    if (data.containsKey('confidence')) {
+      context.handle(
+        _confidenceMeta,
+        confidence.isAcceptableOrUnknown(data['confidence']!, _confidenceMeta),
+      );
+    }
+    if (data.containsKey('timestamp')) {
+      context.handle(
+        _timestampMeta,
+        timestamp.isAcceptableOrUnknown(data['timestamp']!, _timestampMeta),
+      );
+    }
+    if (data.containsKey('recommendations_json')) {
+      context.handle(
+        _recommendationsJsonMeta,
+        recommendationsJson.isAcceptableOrUnknown(
+          data['recommendations_json']!,
+          _recommendationsJsonMeta,
+        ),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  HistoryData map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return HistoryData(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      imagePath: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}image_path'],
+      )!,
+      cropName: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}crop_name'],
+      )!,
+      disease: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}disease'],
+      ),
+      confidence: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}confidence'],
+      ),
+      timestamp: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}timestamp'],
+      )!,
+      recommendationsJson: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}recommendations_json'],
+      ),
+    );
+  }
+
+  @override
+  $HistoryTable createAlias(String alias) {
+    return $HistoryTable(attachedDatabase, alias);
+  }
+}
+
+class HistoryData extends DataClass implements Insertable<HistoryData> {
+  final int id;
+  final String imagePath;
+  final String cropName;
+  final String? disease;
+  final String? confidence;
+  final DateTime timestamp;
+  final String? recommendationsJson;
+  const HistoryData({
+    required this.id,
+    required this.imagePath,
+    required this.cropName,
+    this.disease,
+    this.confidence,
+    required this.timestamp,
+    this.recommendationsJson,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['image_path'] = Variable<String>(imagePath);
+    map['crop_name'] = Variable<String>(cropName);
+    if (!nullToAbsent || disease != null) {
+      map['disease'] = Variable<String>(disease);
+    }
+    if (!nullToAbsent || confidence != null) {
+      map['confidence'] = Variable<String>(confidence);
+    }
+    map['timestamp'] = Variable<DateTime>(timestamp);
+    if (!nullToAbsent || recommendationsJson != null) {
+      map['recommendations_json'] = Variable<String>(recommendationsJson);
+    }
+    return map;
+  }
+
+  HistoryCompanion toCompanion(bool nullToAbsent) {
+    return HistoryCompanion(
+      id: Value(id),
+      imagePath: Value(imagePath),
+      cropName: Value(cropName),
+      disease: disease == null && nullToAbsent
+          ? const Value.absent()
+          : Value(disease),
+      confidence: confidence == null && nullToAbsent
+          ? const Value.absent()
+          : Value(confidence),
+      timestamp: Value(timestamp),
+      recommendationsJson: recommendationsJson == null && nullToAbsent
+          ? const Value.absent()
+          : Value(recommendationsJson),
+    );
+  }
+
+  factory HistoryData.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return HistoryData(
+      id: serializer.fromJson<int>(json['id']),
+      imagePath: serializer.fromJson<String>(json['imagePath']),
+      cropName: serializer.fromJson<String>(json['cropName']),
+      disease: serializer.fromJson<String?>(json['disease']),
+      confidence: serializer.fromJson<String?>(json['confidence']),
+      timestamp: serializer.fromJson<DateTime>(json['timestamp']),
+      recommendationsJson: serializer.fromJson<String?>(
+        json['recommendationsJson'],
+      ),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'imagePath': serializer.toJson<String>(imagePath),
+      'cropName': serializer.toJson<String>(cropName),
+      'disease': serializer.toJson<String?>(disease),
+      'confidence': serializer.toJson<String?>(confidence),
+      'timestamp': serializer.toJson<DateTime>(timestamp),
+      'recommendationsJson': serializer.toJson<String?>(recommendationsJson),
+    };
+  }
+
+  HistoryData copyWith({
+    int? id,
+    String? imagePath,
+    String? cropName,
+    Value<String?> disease = const Value.absent(),
+    Value<String?> confidence = const Value.absent(),
+    DateTime? timestamp,
+    Value<String?> recommendationsJson = const Value.absent(),
+  }) => HistoryData(
+    id: id ?? this.id,
+    imagePath: imagePath ?? this.imagePath,
+    cropName: cropName ?? this.cropName,
+    disease: disease.present ? disease.value : this.disease,
+    confidence: confidence.present ? confidence.value : this.confidence,
+    timestamp: timestamp ?? this.timestamp,
+    recommendationsJson: recommendationsJson.present
+        ? recommendationsJson.value
+        : this.recommendationsJson,
+  );
+  HistoryData copyWithCompanion(HistoryCompanion data) {
+    return HistoryData(
+      id: data.id.present ? data.id.value : this.id,
+      imagePath: data.imagePath.present ? data.imagePath.value : this.imagePath,
+      cropName: data.cropName.present ? data.cropName.value : this.cropName,
+      disease: data.disease.present ? data.disease.value : this.disease,
+      confidence: data.confidence.present
+          ? data.confidence.value
+          : this.confidence,
+      timestamp: data.timestamp.present ? data.timestamp.value : this.timestamp,
+      recommendationsJson: data.recommendationsJson.present
+          ? data.recommendationsJson.value
+          : this.recommendationsJson,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('HistoryData(')
+          ..write('id: $id, ')
+          ..write('imagePath: $imagePath, ')
+          ..write('cropName: $cropName, ')
+          ..write('disease: $disease, ')
+          ..write('confidence: $confidence, ')
+          ..write('timestamp: $timestamp, ')
+          ..write('recommendationsJson: $recommendationsJson')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    imagePath,
+    cropName,
+    disease,
+    confidence,
+    timestamp,
+    recommendationsJson,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is HistoryData &&
+          other.id == this.id &&
+          other.imagePath == this.imagePath &&
+          other.cropName == this.cropName &&
+          other.disease == this.disease &&
+          other.confidence == this.confidence &&
+          other.timestamp == this.timestamp &&
+          other.recommendationsJson == this.recommendationsJson);
+}
+
+class HistoryCompanion extends UpdateCompanion<HistoryData> {
+  final Value<int> id;
+  final Value<String> imagePath;
+  final Value<String> cropName;
+  final Value<String?> disease;
+  final Value<String?> confidence;
+  final Value<DateTime> timestamp;
+  final Value<String?> recommendationsJson;
+  const HistoryCompanion({
+    this.id = const Value.absent(),
+    this.imagePath = const Value.absent(),
+    this.cropName = const Value.absent(),
+    this.disease = const Value.absent(),
+    this.confidence = const Value.absent(),
+    this.timestamp = const Value.absent(),
+    this.recommendationsJson = const Value.absent(),
+  });
+  HistoryCompanion.insert({
+    this.id = const Value.absent(),
+    required String imagePath,
+    this.cropName = const Value.absent(),
+    this.disease = const Value.absent(),
+    this.confidence = const Value.absent(),
+    this.timestamp = const Value.absent(),
+    this.recommendationsJson = const Value.absent(),
+  }) : imagePath = Value(imagePath);
+  static Insertable<HistoryData> custom({
+    Expression<int>? id,
+    Expression<String>? imagePath,
+    Expression<String>? cropName,
+    Expression<String>? disease,
+    Expression<String>? confidence,
+    Expression<DateTime>? timestamp,
+    Expression<String>? recommendationsJson,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (imagePath != null) 'image_path': imagePath,
+      if (cropName != null) 'crop_name': cropName,
+      if (disease != null) 'disease': disease,
+      if (confidence != null) 'confidence': confidence,
+      if (timestamp != null) 'timestamp': timestamp,
+      if (recommendationsJson != null)
+        'recommendations_json': recommendationsJson,
+    });
+  }
+
+  HistoryCompanion copyWith({
+    Value<int>? id,
+    Value<String>? imagePath,
+    Value<String>? cropName,
+    Value<String?>? disease,
+    Value<String?>? confidence,
+    Value<DateTime>? timestamp,
+    Value<String?>? recommendationsJson,
+  }) {
+    return HistoryCompanion(
+      id: id ?? this.id,
+      imagePath: imagePath ?? this.imagePath,
+      cropName: cropName ?? this.cropName,
+      disease: disease ?? this.disease,
+      confidence: confidence ?? this.confidence,
+      timestamp: timestamp ?? this.timestamp,
+      recommendationsJson: recommendationsJson ?? this.recommendationsJson,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (imagePath.present) {
+      map['image_path'] = Variable<String>(imagePath.value);
+    }
+    if (cropName.present) {
+      map['crop_name'] = Variable<String>(cropName.value);
+    }
+    if (disease.present) {
+      map['disease'] = Variable<String>(disease.value);
+    }
+    if (confidence.present) {
+      map['confidence'] = Variable<String>(confidence.value);
+    }
+    if (timestamp.present) {
+      map['timestamp'] = Variable<DateTime>(timestamp.value);
+    }
+    if (recommendationsJson.present) {
+      map['recommendations_json'] = Variable<String>(recommendationsJson.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('HistoryCompanion(')
+          ..write('id: $id, ')
+          ..write('imagePath: $imagePath, ')
+          ..write('cropName: $cropName, ')
+          ..write('disease: $disease, ')
+          ..write('confidence: $confidence, ')
+          ..write('timestamp: $timestamp, ')
+          ..write('recommendationsJson: $recommendationsJson')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
   late final $UsersTable users = $UsersTable(this);
+  late final $HistoryTable history = $HistoryTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
   @override
-  List<DatabaseSchemaEntity> get allSchemaEntities => [users];
+  List<DatabaseSchemaEntity> get allSchemaEntities => [users, history];
 }
 
 typedef $$UsersTableCreateCompanionBuilder =
@@ -759,10 +1224,245 @@ typedef $$UsersTableProcessedTableManager =
       User,
       PrefetchHooks Function()
     >;
+typedef $$HistoryTableCreateCompanionBuilder =
+    HistoryCompanion Function({
+      Value<int> id,
+      required String imagePath,
+      Value<String> cropName,
+      Value<String?> disease,
+      Value<String?> confidence,
+      Value<DateTime> timestamp,
+      Value<String?> recommendationsJson,
+    });
+typedef $$HistoryTableUpdateCompanionBuilder =
+    HistoryCompanion Function({
+      Value<int> id,
+      Value<String> imagePath,
+      Value<String> cropName,
+      Value<String?> disease,
+      Value<String?> confidence,
+      Value<DateTime> timestamp,
+      Value<String?> recommendationsJson,
+    });
+
+class $$HistoryTableFilterComposer
+    extends Composer<_$AppDatabase, $HistoryTable> {
+  $$HistoryTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get imagePath => $composableBuilder(
+    column: $table.imagePath,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get cropName => $composableBuilder(
+    column: $table.cropName,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get disease => $composableBuilder(
+    column: $table.disease,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get confidence => $composableBuilder(
+    column: $table.confidence,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get timestamp => $composableBuilder(
+    column: $table.timestamp,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get recommendationsJson => $composableBuilder(
+    column: $table.recommendationsJson,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$HistoryTableOrderingComposer
+    extends Composer<_$AppDatabase, $HistoryTable> {
+  $$HistoryTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get imagePath => $composableBuilder(
+    column: $table.imagePath,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get cropName => $composableBuilder(
+    column: $table.cropName,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get disease => $composableBuilder(
+    column: $table.disease,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get confidence => $composableBuilder(
+    column: $table.confidence,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get timestamp => $composableBuilder(
+    column: $table.timestamp,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get recommendationsJson => $composableBuilder(
+    column: $table.recommendationsJson,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$HistoryTableAnnotationComposer
+    extends Composer<_$AppDatabase, $HistoryTable> {
+  $$HistoryTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get imagePath =>
+      $composableBuilder(column: $table.imagePath, builder: (column) => column);
+
+  GeneratedColumn<String> get cropName =>
+      $composableBuilder(column: $table.cropName, builder: (column) => column);
+
+  GeneratedColumn<String> get disease =>
+      $composableBuilder(column: $table.disease, builder: (column) => column);
+
+  GeneratedColumn<String> get confidence => $composableBuilder(
+    column: $table.confidence,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get timestamp =>
+      $composableBuilder(column: $table.timestamp, builder: (column) => column);
+
+  GeneratedColumn<String> get recommendationsJson => $composableBuilder(
+    column: $table.recommendationsJson,
+    builder: (column) => column,
+  );
+}
+
+class $$HistoryTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $HistoryTable,
+          HistoryData,
+          $$HistoryTableFilterComposer,
+          $$HistoryTableOrderingComposer,
+          $$HistoryTableAnnotationComposer,
+          $$HistoryTableCreateCompanionBuilder,
+          $$HistoryTableUpdateCompanionBuilder,
+          (
+            HistoryData,
+            BaseReferences<_$AppDatabase, $HistoryTable, HistoryData>,
+          ),
+          HistoryData,
+          PrefetchHooks Function()
+        > {
+  $$HistoryTableTableManager(_$AppDatabase db, $HistoryTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$HistoryTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$HistoryTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$HistoryTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<String> imagePath = const Value.absent(),
+                Value<String> cropName = const Value.absent(),
+                Value<String?> disease = const Value.absent(),
+                Value<String?> confidence = const Value.absent(),
+                Value<DateTime> timestamp = const Value.absent(),
+                Value<String?> recommendationsJson = const Value.absent(),
+              }) => HistoryCompanion(
+                id: id,
+                imagePath: imagePath,
+                cropName: cropName,
+                disease: disease,
+                confidence: confidence,
+                timestamp: timestamp,
+                recommendationsJson: recommendationsJson,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required String imagePath,
+                Value<String> cropName = const Value.absent(),
+                Value<String?> disease = const Value.absent(),
+                Value<String?> confidence = const Value.absent(),
+                Value<DateTime> timestamp = const Value.absent(),
+                Value<String?> recommendationsJson = const Value.absent(),
+              }) => HistoryCompanion.insert(
+                id: id,
+                imagePath: imagePath,
+                cropName: cropName,
+                disease: disease,
+                confidence: confidence,
+                timestamp: timestamp,
+                recommendationsJson: recommendationsJson,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$HistoryTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $HistoryTable,
+      HistoryData,
+      $$HistoryTableFilterComposer,
+      $$HistoryTableOrderingComposer,
+      $$HistoryTableAnnotationComposer,
+      $$HistoryTableCreateCompanionBuilder,
+      $$HistoryTableUpdateCompanionBuilder,
+      (HistoryData, BaseReferences<_$AppDatabase, $HistoryTable, HistoryData>),
+      HistoryData,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
   $AppDatabaseManager(this._db);
   $$UsersTableTableManager get users =>
       $$UsersTableTableManager(_db, _db.users);
+  $$HistoryTableTableManager get history =>
+      $$HistoryTableTableManager(_db, _db.history);
 }

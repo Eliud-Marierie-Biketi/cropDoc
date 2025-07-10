@@ -3,6 +3,7 @@ import 'dart:math' as Math;
 
 import 'package:crop_doc/l10n/app_localizations.dart';
 import 'package:drift/drift.dart' hide Column;
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -150,7 +151,7 @@ class _RegistrationPageState extends ConsumerState<RegistrationPage>
       // --- Try registering with backend ---
       try {
         final response = await http.post(
-          Uri.parse('http://10.2.14.144:8000/api/users/'),
+          Uri.parse('http://10.2.14.163:8000/api/users/'),
           headers: {'Content-Type': 'application/json'},
           body: jsonEncode({
             'username': username,
@@ -186,7 +187,9 @@ class _RegistrationPageState extends ConsumerState<RegistrationPage>
       if (!mounted) return;
       context.go('/scan');
     } catch (e, stack) {
-      print("❌ Local save failed: $e\n$stack");
+      if (kDebugMode) {
+        print("❌ Local save failed: $e\n$stack");
+      }
 
       if (mounted) {
         showDialog(

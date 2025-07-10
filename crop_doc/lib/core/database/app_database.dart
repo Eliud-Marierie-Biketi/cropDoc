@@ -23,8 +23,20 @@ class Users extends Table {
   BoolColumn get isSynced => boolean().withDefault(const Constant(false))();
 }
 
+// ============ TABLE ============
+class History extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  TextColumn get imagePath => text()();
+  TextColumn get cropName => text().withDefault(const Constant(''))();
+  TextColumn get disease => text().nullable()();
+  TextColumn get confidence => text().nullable()();
+  DateTimeColumn get timestamp => dateTime().withDefault(currentDateAndTime)();
+  TextColumn get recommendationsJson =>
+      text().nullable()(); // NEW: store recommendations
+}
+
 // ========== DATABASE ==========
-@DriftDatabase(tables: [Users])
+@DriftDatabase(tables: [Users, History])
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
@@ -54,6 +66,27 @@ class AppDatabase extends _$AppDatabase {
       (delete(users)..where((tbl) => tbl.id.equals(id))).go();
 
   Future<void> deleteAllUsers() async => delete(users).go();
+
+  // ========== HISTORY OPERATIONS ==========
+
+  Future<int> insertHistory(HistoryCompanion entry) =>
+      into(history).insert(entry);
+
+  Future<List<HistoryData>> getAllHistory() {
+    return (select(history)..orderBy([
+          (t) => OrderingTerm(expression: t.timestamp, mode: OrderingMode.desc),
+        ]))
+        .get();
+  }
+
+  Future<void> deleteHistoryById(int id) {
+    return (delete(history)..where((tbl) => tbl.id.equals(id))).go();
+  }
+
+  Future<void> deleteHistory(int id) =>
+      (delete(history)..where((tbl) => tbl.id.equals(id))).go();
+
+  Future<void> clearAllHistory() async => await delete(history).go();
 
   // ========== SYNC HELPERS ==========
   Future<List<User>> getUnsyncedUsers() =>
