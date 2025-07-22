@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:math' as Math;
 
+import 'package:crop_doc/core/constants/app_strings.dart';
 import 'package:crop_doc/l10n/app_localizations.dart';
 import 'package:drift/drift.dart' hide Column;
 import 'package:flutter/foundation.dart';
@@ -151,7 +152,7 @@ class _RegistrationPageState extends ConsumerState<RegistrationPage>
       // --- Try registering with backend ---
       try {
         final response = await http.post(
-          Uri.parse('http://10.2.14.163:8000/api/users/'),
+          Uri.parse('$baseUrl/users/'),
           headers: {'Content-Type': 'application/json'},
           body: jsonEncode({
             'username': username,

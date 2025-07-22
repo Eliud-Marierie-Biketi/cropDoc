@@ -1,16 +1,17 @@
 // ignore_for_file: use_build_context_synchronously
 
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:crop_doc/core/database/app_database.dart';
 import 'package:crop_doc/features/home/home_page.dart';
 import 'package:crop_doc/l10n/app_localizations.dart';
+import 'package:crop_doc/shared/notifiers/history_refresh_notifier.dart';
 import 'package:drift/drift.dart' hide Column;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:screenshot/screenshot.dart';
 
 class ResultsPage extends StatelessWidget {
@@ -185,36 +186,32 @@ class ResultsPage extends StatelessWidget {
 
   Future<void> _screenshotAndSave(BuildContext context) async {
     try {
-      final image = await _screenshotController.capture();
-      if (image == null) return;
+      if (imageFile == null) return;
 
-      final path = await _saveImage(image, "screenshot_result");
+      final originalImagePath = imageFile!.path;
 
-      await _saveToHistory(path);
-
-      // Optional confirmation dialog (remove if unnecessary)
-      // _showSavedDialog(context, path);
+      await _saveToHistory(originalImagePath);
 
       if (context.mounted) {
-        context.pop(); // Close /results page
-        mainShellKey.currentState?.switchTab(2);
+        HistoryRefreshNotifier.shouldRefresh = true;
+        context.pop(true); // close /results
+        mainShellKey.currentState?.switchTab(2); // go to history tab
       }
     } catch (e) {
-      _showErrorDialog(context, "Screenshot failed: $e");
+      _showErrorDialog(context, "Failed to save result: $e");
     }
   }
 
   Future<void> _downloadCard(BuildContext context) async {
     try {
-      final image = await _screenshotController.capture();
-      if (image == null) return;
+      if (imageFile == null) return;
 
-      final path = await _saveImage(image, "result_card");
+      final originalImagePath = imageFile!.path;
 
-      await _saveToHistory(path);
+      await _saveToHistory(originalImagePath);
 
       if (context.mounted) {
-        context.pop(); // Close /results page
+        context.pop(); // close /results
         mainShellKey.currentState?.switchTab(2);
       }
     } catch (e) {
@@ -225,38 +222,34 @@ class ResultsPage extends StatelessWidget {
   Future<void> _saveToHistory(String imagePath) async {
     final db = getDatabaseInstance();
 
-    // Get current count
-    final allHistory = await db.getAllHistory();
-    if (allHistory.length >= 9) {
-      // Sort by timestamp and delete the oldest
-      allHistory.sort((a, b) => a.timestamp.compareTo(b.timestamp));
-      await db.deleteHistoryById(allHistory.first.id);
-    }
+    // Extract values
+    final disease = resultData?['result'] as String? ?? "Unknown";
+    final confidence = (resultData?['confidence'] as num?)?.toString() ?? "0";
+    final recommendations = resultData?['recommendation'];
+    final recommendationsJson = recommendations != null
+        ? jsonEncode(recommendations)
+        : null;
 
+    // Insert new history entry
     await db.insertHistory(
       HistoryCompanion(
         imagePath: Value(imagePath),
-        cropName: const Value("Crop"), // or actual crop name
-        disease: const Value("Detected Disease"),
-        confidence: const Value("93%"),
+        cropName: const Value("Crop"), // Replace with actual crop if available
+        disease: Value(disease),
+        confidence: Value(confidence),
         timestamp: Value(DateTime.now()),
-        recommendationsJson: const Value(null), // or actual value
+        recommendationsJson: Value(recommendationsJson),
       ),
     );
-  }
 
-  Future<String> _saveImage(Uint8List imageBytes, String filenamePrefix) async {
-    final directory = await getApplicationDocumentsDirectory();
-    final filePath =
-        "${directory.path}/${filenamePrefix}_${DateTime.now().millisecondsSinceEpoch}.png";
-
-    await compute(_writeFile, {'path': filePath, 'bytes': imageBytes});
-    return filePath;
-  }
-
-  void _writeFile(Map<String, dynamic> data) {
-    final file = File(data['path']);
-    file.writeAsBytesSync(data['bytes']);
+    // Clean up if more than 10
+    final allHistory = await db.getAllHistory();
+    if (allHistory.length > 10) {
+      final itemsToDelete = allHistory.sublist(10); // keep 10, remove the rest
+      for (final item in itemsToDelete) {
+        await db.deleteHistoryById(item.id);
+      }
+    }
   }
 
   // ignore: unused_element

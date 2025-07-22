@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'package:crop_doc/core/constants/app_strings.dart';
 import 'package:crop_doc/core/database/models/crops.dart';
 import 'package:crop_doc/core/services/crop_service.dart';
 import 'package:crop_doc/shared/widgets/go_to_dev_tools.dart';
@@ -102,15 +103,12 @@ class ScanPage extends HookConsumerWidget {
       isProcessing.value = true;
 
       try {
-        final uri = Uri.parse('http://10.2.14.163:8000/api/mock-classify/');
+        final uri = Uri.parse('$baseUrl/mock-classify/');
         final request = http.MultipartRequest('POST', uri);
 
         // Add the image file
         request.files.add(
-          await http.MultipartFile.fromPath(
-            'image', // <-- the field name expected by your backend
-            imageFile.value!.path,
-          ),
+          await http.MultipartFile.fromPath('image', imageFile.value!.path),
         );
 
         final response = await request.send();
@@ -124,20 +122,25 @@ class ScanPage extends HookConsumerWidget {
               '/results',
               extra: {'data': responseData, 'imageFile': imageFile.value},
             );
+            debugPrint("✅ Response data: $responseData");
           }
         } else {
           throw Exception("Failed with status code ${response.statusCode}");
         }
       } catch (e) {
+        debugPrint("❌ analyzeImage error: $e");
         if (context.mounted) {
-          showDialog(
+          await showDialog(
+            // ✅ Use await here
             context: context,
             builder: (_) => AlertDialog(
               title: const Text("Error"),
               content: Text("Failed to analyze image: $e"),
               actions: [
                 TextButton(
-                  onPressed: () => context.pop(),
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                  },
                   child: const Text("OK"),
                 ),
               ],

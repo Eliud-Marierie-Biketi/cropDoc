@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'package:crop_doc/features/auth/presentation/onboarding.dart';
 import 'package:crop_doc/features/auth/presentation/registration_page.dart';
 import 'package:crop_doc/features/home/home_page.dart';
@@ -39,14 +38,12 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/results',
-        pageBuilder: (context, state) {
-          final extra = state.extra as Map<String, dynamic>?;
-          final resultData = extra?['data'] as Map<String, dynamic>;
-          final imageFile = extra?['imageFile'] as File;
+        builder: (context, state) {
+          final extras = state.extra as Map<String, dynamic>;
+          final resultData = extras['data'];
+          final imageFile = extras['imageFile'];
 
-          return MaterialPage(
-            child: ResultsPage(resultData: resultData, imageFile: imageFile),
-          );
+          return ResultsPage(resultData: resultData, imageFile: imageFile);
         },
       ),
     ],

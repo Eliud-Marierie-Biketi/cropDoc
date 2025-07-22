@@ -4,7 +4,9 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:crop_doc/core/constants/app_strings.dart';
 import 'package:crop_doc/l10n/app_localizations.dart';
+import 'package:crop_doc/shared/widgets/scanning_overlay.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:go_router/go_router.dart';
@@ -12,6 +14,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:http/http.dart' as http;
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:shimmer/shimmer.dart';
 
 class SamplesPage extends HookWidget {
@@ -29,9 +32,7 @@ class SamplesPage extends HookWidget {
     useEffect(() {
       Future(() async {
         try {
-          final res = await http.get(
-            Uri.parse('http://10.2.14.163:8000/api/sample-images/'),
-          );
+          final res = await http.get(Uri.parse('$baseUrl/sample-images/'));
           if (res.statusCode == 200) {
             final Map<String, dynamic> data = jsonDecode(res.body);
             final List<String> imageUrls = List<String>.from(data['images']);
@@ -239,108 +240,206 @@ class SamplesPage extends HookWidget {
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
-      builder: (context) => Container(
-        decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.surface,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-        ),
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Hero(
-              tag: 'sample-$index',
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(16),
-                child: Image.asset(
-                  imagePath,
-                  fit: BoxFit.cover,
-                  height: 200,
-                  width: double.infinity,
+      isScrollControlled: true,
+      builder: (context) {
+        bool isLoading = false;
+
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return Container(
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.surface,
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(24),
                 ),
               ),
-            ),
-            const SizedBox(height: 24),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                ElevatedButton(
-                  onPressed: () => Navigator.pop(context),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.grey[200],
-                    foregroundColor: Colors.grey[800],
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 24,
-                      vertical: 14,
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Hero(
+                    tag: 'sample-$index',
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(16),
+                      child: Stack(
+                        children: [
+                          CachedNetworkImage(
+                            imageUrl: imagePath,
+                            fit: BoxFit.cover,
+                            height: 200,
+                            width: double.infinity,
+                            placeholder: (context, url) =>
+                                Container(height: 200, color: Colors.grey[300]),
+                            errorWidget: (context, url, error) =>
+                                const Icon(Icons.error),
+                          ),
+
+                          // Scanning effect
+                          const Positioned.fill(child: ScanningOverlay()),
+
+                          // Gradient and icon bar at the bottom
+                          Positioned(
+                            bottom: 0,
+                            left: 0,
+                            right: 0,
+                            child: Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  begin: Alignment.topCenter,
+                                  end: Alignment.bottomCenter,
+                                  colors: [
+                                    Colors.transparent,
+                                    Colors.black.withAlpha(178),
+                                  ],
+                                ),
+                              ),
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    LucideIcons.image,
+                                    size: 16,
+                                    color: Colors.white70,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    'Sample ${index + 1}',
+                                    style: GoogleFonts.poppins(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+
+                          // Scan button
+                          Positioned(
+                            top: 12,
+                            right: 12,
+                            child: Container(
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(12),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withAlpha(25),
+                                    blurRadius: 6,
+                                  ),
+                                ],
+                              ),
+                              child: IconButton(
+                                icon: Icon(LucideIcons.scan, size: 20),
+                                color: Theme.of(context).colorScheme.primary,
+                                onPressed: () => simulateScanFromUrl(
+                                  context: context,
+                                  imageUrl: imagePath,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
-                  child: Text('Cancel'),
-                ),
-                ElevatedButton.icon(
-                  onPressed: () {
-                    Navigator.pop(context);
-                    simulateScan(context: context, imageFile: File(imagePath));
-                  },
-                  icon: Icon(LucideIcons.scan, size: 16),
-                  label: Text('Scan This'),
-                  style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 24,
-                      vertical: 14,
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
+                  const SizedBox(height: 24),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      ElevatedButton(
+                        onPressed: () => Navigator.pop(context),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.grey[200],
+                          foregroundColor: Colors.grey[800],
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 24,
+                            vertical: 14,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: const Text('Cancel'),
+                      ),
+                      ElevatedButton.icon(
+                        onPressed: isLoading
+                            ? null
+                            : () async {
+                                setState(() => isLoading = true);
+                                await simulateScanFromUrl(
+                                  context: context,
+                                  imageUrl: imagePath,
+                                );
+                                if (context.mounted) Navigator.pop(context);
+                              },
+                        icon: isLoading
+                            ? const SizedBox(
+                                height: 16,
+                                width: 16,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  valueColor: AlwaysStoppedAnimation<Color>(
+                                    Colors.white,
+                                  ),
+                                ),
+                              )
+                            : const Icon(LucideIcons.scan, size: 16),
+                        label: Text(isLoading ? 'Scanning...' : 'Scan This'),
+                        style: ElevatedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 24,
+                            vertical: 14,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
+                ],
+              ),
+            );
+          },
+        );
+      },
     );
   }
 
-  void simulateScanFromUrl({
+  Future<void> simulateScanFromUrl({
     required BuildContext context,
     required String imageUrl,
   }) async {
-    // Show loading
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => AlertDialog(
-        backgroundColor: Colors.white,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const CircularProgressIndicator(),
-            const SizedBox(height: 20),
-            Text('Downloading sample...', style: GoogleFonts.poppins()),
-          ],
-        ),
-      ),
-    );
-
     try {
       final response = await http.get(Uri.parse(imageUrl));
       if (response.statusCode == 200) {
-        final tempDir = Directory.systemTemp;
-        final tempFile = File('${tempDir.path}/sample.jpg');
-        await tempFile.writeAsBytes(response.bodyBytes);
+        final tempDir = await getTemporaryDirectory();
+        final filePath =
+            '${tempDir.path}/sample_${DateTime.now().millisecondsSinceEpoch}.jpg';
+        final file = File(filePath);
+        await file.writeAsBytes(response.bodyBytes);
 
-        Navigator.pop(context); // close download dialog
-        simulateScan(context: context, imageFile: tempFile);
+        await analyzeImage(context: context, imageFile: file);
       } else {
-        throw Exception('Failed to download image');
+        throw Exception("Failed to download image: ${response.statusCode}");
       }
     } catch (e) {
-      Navigator.pop(context);
-      _showErrorDialog(context, 'Failed to load image: $e');
+      if (context.mounted) {
+        showDialog(
+          context: context,
+          builder: (_) => AlertDialog(
+            title: const Text("Error"),
+            content: Text("Failed to process sample image: $e"),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text("OK"),
+              ),
+            ],
+          ),
+        );
+      }
     }
   }
 
@@ -367,7 +466,7 @@ class SamplesPage extends HookWidget {
     );
 
     try {
-      final uri = Uri.parse('https://10.2.14.163:8000/api/mock-classify/');
+      final uri = Uri.parse('$baseUrl/mock-classify/');
       final request = http.MultipartRequest('POST', uri);
 
       request.files.add(
@@ -412,5 +511,55 @@ class SamplesPage extends HookWidget {
         ],
       ),
     );
+  }
+
+  Future<void> analyzeImage({
+    required BuildContext context,
+    required File imageFile,
+  }) async {
+    final isProcessing = ValueNotifier(true);
+
+    try {
+      final uri = Uri.parse('$baseUrl/mock-classify/');
+      final request = http.MultipartRequest('POST', uri);
+
+      request.files.add(
+        await http.MultipartFile.fromPath('image', imageFile.path),
+      );
+
+      final response = await request.send();
+      final responseBody = await response.stream.bytesToString();
+
+      if (response.statusCode == 200) {
+        final responseData = jsonDecode(responseBody);
+
+        if (context.mounted) {
+          context.push(
+            '/results',
+            extra: {'data': responseData, 'imageFile': imageFile},
+          );
+        }
+      } else {
+        throw Exception("Failed with status code ${response.statusCode}");
+      }
+    } catch (e) {
+      if (context.mounted) {
+        showDialog(
+          context: context,
+          builder: (_) => AlertDialog(
+            title: const Text("Error"),
+            content: Text("Failed to analyze image: $e"),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text("OK"),
+              ),
+            ],
+          ),
+        );
+      }
+    } finally {
+      isProcessing.value = false;
+    }
   }
 }
