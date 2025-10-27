@@ -1,7 +1,7 @@
 // ignore: library_prefixes
 import 'dart:math' as Math;
+import 'package:crop_doc/core/providers/locale_provider.dart';
 import 'package:crop_doc/l10n/app_localizations.dart';
-import 'package:crop_doc/shared/providers/locale_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -165,25 +165,29 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage>
   }
 
   Widget _buildLanguagePicker() {
-    final locale = ref.watch(localeProvider);
+    final localeState = ref.watch(localeProvider);
+    final String? localeCode = localeState.locale?.languageCode;
+
+    // Ensure a default if null
+    final String selected = localeCode ?? 'en';
 
     return Align(
       alignment: Alignment.topRight,
       child: Padding(
         padding: const EdgeInsets.only(top: 24, right: 24),
-        child: DropdownButton<Locale>(
-          value: locale ?? const Locale('en'),
+        child: DropdownButton<String>(
+          value: selected,
           underline: const SizedBox(),
           dropdownColor: Colors.white,
           icon: const Icon(Icons.language, color: Colors.black),
           onChanged: (val) {
             if (val != null) {
-              ref.read(localeProvider.notifier).setLocale(val);
+              ref.read(localeProvider.notifier).setLocale(Locale(val));
             }
           },
           items: const [
-            DropdownMenuItem(value: Locale('en'), child: Text("English")),
-            DropdownMenuItem(value: Locale('sw'), child: Text("Kiswahili")),
+            DropdownMenuItem(value: 'en', child: Text("English")),
+            DropdownMenuItem(value: 'sw', child: Text("Kiswahili")),
           ],
         ),
       ),

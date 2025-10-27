@@ -1,60 +1,59 @@
 import 'dart:io';
-import 'dart:convert';
-import 'package:crop_doc/core/database/app_database.dart';
-import 'package:crop_doc/shared/notifiers/history_refresh_notifier.dart';
+import 'package:crop_doc/core/database/models/treatment_model.dart';
+import 'package:crop_doc/core/providers/model_providers.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:visibility_detector/visibility_detector.dart';
 
-class HistoryPage extends StatefulWidget {
+/// Example assumes each item in history represents
+/// a disease detection with stored imagePath or imageUrl
+
+class HistoryPage extends ConsumerStatefulWidget {
   const HistoryPage({super.key});
 
   @override
-  State<HistoryPage> createState() => _HistoryPageState();
+  ConsumerState<HistoryPage> createState() => _HistoryPageState();
 }
 
-class _HistoryPageState extends State<HistoryPage> {
-  late AppDatabase db;
-  late Future<List<HistoryData>> _historyFuture;
+class _HistoryPageState extends ConsumerState<HistoryPage> {
+  bool _isLoading = false;
+
+  Future<void> _loadHistory() async {
+    setState(() => _isLoading = true);
+    final syncService = ref.read(syncServiceProvider);
+
+    try {
+      // Example: sync treatments and user stats when visible
+      final treatments = await syncService.fetchTreatments();
+      final stats = await syncService.fetchUserStats();
+
+      final treatmentNotifier = ref.read(treatmentsProvider.notifier);
+      final statsNotifier = ref.read(userStatsProvider.notifier);
+
+      await treatmentNotifier.replaceAll(treatments);
+      await statsNotifier.replaceAll(stats);
+    } catch (e) {
+      debugPrint("⚠️ Sync failed: $e");
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
 
   @override
   void initState() {
     super.initState();
-    db = getDatabaseInstance();
     _loadHistory();
   }
 
   @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-
-    if (HistoryRefreshNotifier.shouldRefresh) {
-      HistoryRefreshNotifier.shouldRefresh = false;
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        _loadHistory();
-      });
-    }
-  }
-
-  void _loadHistory() {
-    setState(() {
-      _historyFuture = db.getAllHistory();
-    });
-  }
-
-  Future<void> _navigateToDetection(BuildContext context) async {
-    final shouldRefresh = await Navigator.pushNamed(context, '/detect');
-    if (shouldRefresh == true) {
-      _loadHistory();
-    }
-  }
-
-  @override
   Widget build(BuildContext context) {
+    final treatments = ref.watch(treatmentsProvider);
+
     return VisibilityDetector(
       key: const Key('history-tab'),
       onVisibilityChanged: (info) {
-        if (info.visibleFraction > 0) {
+        if (info.visibleFraction > 0.6) {
           _loadHistory();
         }
       },
@@ -70,199 +69,102 @@ class _HistoryPageState extends State<HistoryPage> {
             ),
           ],
         ),
-        floatingActionButton: FloatingActionButton(
-          onPressed: () => _navigateToDetection(context),
-          tooltip: 'New Detection',
-          child: const Icon(Icons.add_a_photo),
-        ),
-        body: FutureBuilder<List<HistoryData>>(
-          future: _historyFuture,
-          builder: (context, snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting) {
-              return const Center(child: CircularProgressIndicator());
-            }
-
-            final historyList = snapshot.data ?? [];
-
-            if (historyList.isEmpty) {
-              return const Center(child: Text('No detection history found.'));
-            }
-
-            return RefreshIndicator(
-              onRefresh: () async => _loadHistory(),
-              child: ListView.builder(
-                padding: const EdgeInsets.all(16),
-                itemCount: historyList.length,
-                itemBuilder: (context, index) {
-                  final item = historyList[index];
-                  return Card(
-                    margin: const EdgeInsets.symmetric(vertical: 8),
-                    child: ListTile(
-                      leading: Image.file(
-                        File(item.imagePath),
-                        width: 50,
-                        height: 50,
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) =>
-                            const Icon(Icons.broken_image),
+        body: _isLoading
+            ? const Center(child: CircularProgressIndicator())
+            : RefreshIndicator(
+                onRefresh: _loadHistory,
+                child: treatments.isEmpty
+                    ? const Center(child: Text('No detection history found.'))
+                    : ListView.builder(
+                        padding: const EdgeInsets.all(16),
+                        itemCount: treatments.length,
+                        itemBuilder: (context, index) {
+                          final t = treatments[index];
+                          return _buildHistoryCard(context, t);
+                        },
                       ),
-                      title: Text(
-                        '${item.cropName} - ${item.disease ?? "Unknown"}',
-                        style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
-                      ),
-                      subtitle: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Confidence: ${_confidencePercent(item.confidence)}',
-                            style: GoogleFonts.poppins(fontSize: 12),
-                          ),
-                          Text(
-                            'Date: ${item.timestamp.toLocal().toString().split('.').first}',
-                            style: GoogleFonts.poppins(fontSize: 12),
-                          ),
-                          if (item.recommendationsJson != null)
-                            Padding(
-                              padding: const EdgeInsets.only(top: 6.0),
-                              child: Text(
-                                _formatRecommendations(
-                                  item.recommendationsJson!,
-                                ),
-                                style: GoogleFonts.poppins(fontSize: 12),
-                              ),
-                            ),
-                        ],
-                      ),
-                      isThreeLine: true,
-                      onTap: () {
-                        _showHistoryDialog(context, item);
-                      },
-                    ),
-                  );
-                },
               ),
-            );
-          },
-        ),
       ),
     );
   }
 
-  String _confidencePercent(String? raw) {
-    final parsed = double.tryParse(raw ?? '');
-    if (parsed == null) return "N/A";
-    return "${(parsed * 100).toStringAsFixed(1)}%";
+  Widget _buildHistoryCard(BuildContext context, TreatmentModel treatment) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Card(
+      margin: const EdgeInsets.symmetric(vertical: 8),
+      elevation: 3,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: ListTile(
+        leading: ClipRRect(
+          borderRadius: BorderRadius.circular(8),
+          child: _buildNetworkImage(
+            treatment.additionalInfo, // suppose this field holds an image URL
+          ),
+        ),
+        title: Text(
+          treatment.disease,
+          style: GoogleFonts.poppins(fontWeight: FontWeight.w600, fontSize: 16),
+        ),
+        subtitle: Text(
+          treatment.treatmentMethod,
+          style: GoogleFonts.poppins(fontSize: 13),
+        ),
+        trailing: Icon(Icons.chevron_right, color: colorScheme.primary),
+        onTap: () => _showDetailsDialog(context, treatment),
+      ),
+    );
   }
 
-  String _formatRecommendations(String jsonStr) {
-    try {
-      final List<dynamic> recs = jsonDecode(jsonStr);
-      return recs.map((r) => '• ${r["drug_name"]}').join('\n');
-    } catch (_) {
-      return '';
+  Widget _buildNetworkImage(String? url) {
+    if (url == null || url.isEmpty) {
+      return const Icon(Icons.broken_image, size: 50);
     }
+    if (url.startsWith('http')) {
+      return Image.network(
+        url,
+        width: 60,
+        height: 60,
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) => const Icon(Icons.broken_image, size: 50),
+      );
+    } else if (File(url).existsSync()) {
+      return Image.file(
+        File(url),
+        width: 60,
+        height: 60,
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) => const Icon(Icons.broken_image, size: 50),
+      );
+    }
+    return const Icon(Icons.image_not_supported, size: 50);
   }
 
-  void _showHistoryDialog(BuildContext context, HistoryData item) {
-    final List<dynamic> recommendations = item.recommendationsJson != null
-        ? jsonDecode(item.recommendationsJson!)
-        : [];
-
+  void _showDetailsDialog(BuildContext context, TreatmentModel t) {
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
-        contentPadding: const EdgeInsets.all(12),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        content: SizedBox(
-          width: MediaQuery.of(context).size.width * 0.9,
-          height: 500,
-          child: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(12),
-                  child: Image.file(
-                    File(item.imagePath),
-                    height: 200,
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) =>
-                        const Icon(Icons.broken_image, size: 100),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                _dialogRow("Result", item.disease ?? "Unknown"),
-                _dialogRow("Confidence", _confidencePercent(item.confidence)),
-                const SizedBox(height: 12),
-                if (recommendations.isNotEmpty) ...[
-                  Text(
-                    "Recommendations",
-                    style: GoogleFonts.poppins(
-                      fontSize: 17,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.teal[700],
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  ListView.builder(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    itemCount: recommendations.length,
-                    itemBuilder: (_, index) {
-                      final rec = recommendations[index];
-                      return Card(
-                        margin: const EdgeInsets.symmetric(vertical: 6),
-                        child: Padding(
-                          padding: const EdgeInsets.all(12),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              _dialogRow("Drug", rec['drug_name'] ?? 'N/A'),
-                              _dialogRow(
-                                "Instructions",
-                                rec['drug_administration_instructions'] ??
-                                    'N/A',
-                              ),
-                            ],
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                ] else
-                  Text(
-                    "No treatment needed",
-                    style: GoogleFonts.poppins(
-                      fontSize: 16,
-                      color: Colors.green[700],
-                      fontStyle: FontStyle.italic,
-                    ),
-                  ),
-              ],
+        title: Text(t.disease),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              "Method: ${t.treatmentMethod}",
+              style: GoogleFonts.poppins(fontSize: 14),
             ),
-          ),
+            const SizedBox(height: 8),
+            Text(
+              "Info: ${t.additionalInfo}",
+              style: GoogleFonts.poppins(fontSize: 13),
+            ),
+          ],
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
             child: const Text("Close"),
           ),
-        ],
-      ),
-    );
-  }
-
-  Widget _dialogRow(String title, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            "$title: ",
-            style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
-          ),
-          Expanded(child: Text(value, style: GoogleFonts.poppins())),
         ],
       ),
     );

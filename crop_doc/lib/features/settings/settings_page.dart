@@ -1,23 +1,21 @@
-import 'package:crop_doc/core/database/app_database_provider.dart';
+import 'package:crop_doc/core/providers/auth_provider.dart';
+import 'package:crop_doc/core/providers/locale_provider.dart';
+import 'package:crop_doc/core/providers/theme_mode_provider.dart';
 import 'package:crop_doc/features/auth/presentation/onboarding.dart';
 import 'package:crop_doc/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../shared/providers/locale_provider.dart';
-import '../../shared/providers/theme_provider.dart';
 
 class SettingsPage extends ConsumerWidget {
   const SettingsPage({super.key});
 
   Future<void> _clearData(BuildContext context, WidgetRef ref) async {
-    final db = ref.read(appDatabaseProvider);
-
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text("Clear all data?"),
         content: const Text(
-          "This will delete all local app data. Are you sure?",
+          "This will delete all local app data and log you out. Are you sure?",
         ),
         actions: [
           TextButton(
@@ -36,21 +34,34 @@ class SettingsPage extends ConsumerWidget {
       ),
     );
 
-    if (confirm == true) {
-      await db
-          .deleteAllData(); // <-- You must implement this in your AppDatabase
+    if (confirm != true) return;
+
+    try {
+      // 🧠 Access auth notifier
+      final authNotifier = ref.read(authProvider.notifier);
+
+      // 🧹 Clear user data & boxes
+      await authNotifier.logout(); // should clear Hive user + session
+
+      // 🚀 Navigate to onboarding page fresh
       if (context.mounted) {
         Navigator.of(context).pushAndRemoveUntil(
           MaterialPageRoute(builder: (_) => const OnboardingPage()),
           (route) => false,
         );
       }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text("Failed to clear data: $e")));
+      }
     }
   }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final locale = ref.watch(localeProvider);
+    final localeState = ref.watch(localeProvider);
     final theme = ref.watch(themeModeProvider);
     final t = AppLocalizations.of(context)!;
 
@@ -59,13 +70,14 @@ class SettingsPage extends ConsumerWidget {
       body: ListView(
         padding: const EdgeInsets.all(24),
         children: [
+          // 🌍 LANGUAGE
           Text(
             "🌍 ${t.languageLabel}",
             style: Theme.of(context).textTheme.titleMedium,
           ),
           const SizedBox(height: 8),
           DropdownButton<Locale>(
-            value: locale ?? const Locale('en'),
+            value: localeState.locale,
             onChanged: (val) {
               if (val != null) {
                 ref.read(localeProvider.notifier).setLocale(val);
@@ -76,7 +88,10 @@ class SettingsPage extends ConsumerWidget {
               DropdownMenuItem(value: Locale('sw'), child: Text("Kiswahili")),
             ],
           ),
+
           const SizedBox(height: 32),
+
+          // 🎨 THEME MODE
           Text(
             "🎨 ${t.themeLabel}",
             style: Theme.of(context).textTheme.titleMedium,
@@ -86,7 +101,8 @@ class SettingsPage extends ConsumerWidget {
             value: theme,
             onChanged: (val) {
               if (val != null) {
-                ref.read(themeModeProvider.notifier).setThemeMode(val);
+                // Call the notifier method to update state and persist
+                ref.read(themeModeProvider.notifier).setTheme(val);
               }
             },
             items: const [
@@ -95,9 +111,10 @@ class SettingsPage extends ConsumerWidget {
               DropdownMenuItem(value: ThemeMode.dark, child: Text("Dark")),
             ],
           ),
+
           const SizedBox(height: 40),
 
-          // Clear data / logout button
+          // 🚪 LOGOUT / CLEAR DATA
           ElevatedButton.icon(
             onPressed: () => _clearData(context, ref),
             icon: const Icon(Icons.logout),

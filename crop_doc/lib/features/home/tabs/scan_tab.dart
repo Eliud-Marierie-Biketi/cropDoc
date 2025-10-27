@@ -1,8 +1,8 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:crop_doc/core/constants/app_strings.dart';
-import 'package:crop_doc/core/database/models/crops.dart';
-import 'package:crop_doc/core/services/crop_service.dart';
+import 'package:crop_doc/core/database/models/crop_model.dart';
+import 'package:crop_doc/core/providers/model_providers.dart';
 import 'package:crop_doc/shared/widgets/go_to_dev_tools.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
@@ -14,22 +14,17 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:glassmorphism/glassmorphism.dart';
-
 import 'package:crop_doc/l10n/app_localizations.dart';
 
 class ScanPage extends HookConsumerWidget {
   const ScanPage({super.key});
 
-  // Custom green colors for light and dark modes
+  // Theme colors
   static const Color _lightGreenBackground = Color(0xFFD0F0C0);
-
-  // Strong green border color for both modes
   static const Color _strongGreenBorder = Color(0xFF1B5E20);
 
-  // Safely get color with opacity; clamps opacity between 0 and 1
   Color _safeWithOpacity(Color color, double opacity) {
     final clamped = opacity.clamp(0.0, 1.0);
-    // ignore: deprecated_member_use
     return color.withOpacity(clamped);
   }
 
@@ -41,7 +36,6 @@ class ScanPage extends HookConsumerWidget {
       const Color.fromARGB(255, 10, 50, 12);
 
   @override
-  @override
   Widget build(BuildContext context, WidgetRef ref) {
     final t = AppLocalizations.of(context)!;
     final theme = Theme.of(context);
@@ -49,44 +43,38 @@ class ScanPage extends HookConsumerWidget {
 
     final imageFile = useState<File?>(null);
     final isProcessing = useState<bool>(false);
-    final crops = useState<List<Crop>>([]);
-    final selectedCrop = useState<Crop?>(null);
+
+    // 🧠 Read from Hive crops provider
+    final crops = ref.watch(cropProvider);
+    final cropNotifier = ref.read(cropProvider.notifier);
+
+    final selectedCrop = useState<CropModel?>(
+      crops.isNotEmpty ? crops.first : null,
+    );
+
     final controller = useAnimationController(
       duration: const Duration(milliseconds: 500),
     );
 
-    // Load crops from API
+    // 🧩 Load crops from backend if empty
     useEffect(() {
-      Future.microtask(() async {
-        try {
-          final allCrops = await fetchCropsFromServer();
-          crops.value = allCrops;
-          if (allCrops.isNotEmpty) {
-            selectedCrop.value = allCrops.first;
+      if (crops.isEmpty) {
+        Future.microtask(() async {
+          try {
+            final syncService = ref.read(syncServiceProvider);
+            final fetched = await syncService.fetchCrops();
+            for (final c in fetched) {
+              cropNotifier.addItem(c);
+            }
+          } catch (e) {
+            debugPrint("⚠️ Could not fetch crops: $e");
           }
-        } catch (_) {
-          if (context.mounted) {
-            showDialog(
-              context: context,
-              builder: (_) => AlertDialog(
-                title: const Text("Error"),
-                content: const Text(
-                  "Failed to load crops. Check your connection.",
-                ),
-                actions: [
-                  TextButton(
-                    onPressed: () => context.pop(),
-                    child: const Text("OK"),
-                  ),
-                ],
-              ),
-            );
-          }
-        }
-      });
+        });
+      }
       return null;
     }, []);
 
+    // 🔹 Pick image
     Future<void> pickImage(ImageSource source) async {
       final picker = ImagePicker();
       final pickedFile = await picker.pickImage(source: source);
@@ -97,50 +85,53 @@ class ScanPage extends HookConsumerWidget {
       }
     }
 
+    // 🔹 Analyze image using /api/classify/
     Future<void> analyzeImage() async {
       if (imageFile.value == null || isProcessing.value) return;
-
       isProcessing.value = true;
 
       try {
-        final uri = Uri.parse('$baseUrl/mock-classify/');
-        final request = http.MultipartRequest('POST', uri);
-
-        // Add the image file
-        request.files.add(
-          await http.MultipartFile.fromPath('image', imageFile.value!.path),
-        );
+        final uri = Uri.parse('$baseUrl/api/classify/');
+        final request = http.MultipartRequest('POST', uri)
+          ..files.add(
+            await http.MultipartFile.fromPath('image', imageFile.value!.path),
+          );
 
         final response = await request.send();
         final responseBody = await response.stream.bytesToString();
 
         if (response.statusCode == 200) {
-          final responseData = jsonDecode(responseBody);
+          final data = jsonDecode(responseBody);
+
+          // ✅ Expected format:
+          // {
+          // "result": "common rust",
+          // "confidence": 0.93,
+          // "lime_image": "http://...",
+          // "saved_image": "http://...",
+          // "recommendations": [...]
+          // }
 
           if (context.mounted) {
             context.push(
               '/results',
-              extra: {'data': responseData, 'imageFile': imageFile.value},
+              extra: {'data': data, 'imageFile': imageFile.value},
             );
-            debugPrint("✅ Response data: $responseData");
           }
         } else {
-          throw Exception("Failed with status code ${response.statusCode}");
+          throw Exception("Failed (${response.statusCode})");
         }
       } catch (e) {
         debugPrint("❌ analyzeImage error: $e");
         if (context.mounted) {
           await showDialog(
-            // ✅ Use await here
             context: context,
             builder: (_) => AlertDialog(
               title: const Text("Error"),
               content: Text("Failed to analyze image: $e"),
               actions: [
                 TextButton(
-                  onPressed: () {
-                    Navigator.of(context).pop();
-                  },
+                  onPressed: () => Navigator.of(context).pop(),
                   child: const Text("OK"),
                 ),
               ],
@@ -161,7 +152,7 @@ class ScanPage extends HookConsumerWidget {
           padding: const EdgeInsets.all(16),
           child: Column(
             children: [
-              // --- Crop dropdown ---
+              // 🌾 Crop dropdown
               GlassmorphicContainer(
                 width: double.infinity,
                 height: 80,
@@ -197,7 +188,7 @@ class ScanPage extends HookConsumerWidget {
                       ),
                       const SizedBox(width: 16),
                       Expanded(
-                        child: DropdownButton<Crop>(
+                        child: DropdownButton<CropModel>(
                           value: selectedCrop.value,
                           isExpanded: true,
                           underline: const SizedBox(),
@@ -208,11 +199,11 @@ class ScanPage extends HookConsumerWidget {
                                 ? Colors.black87
                                 : Colors.white70,
                           ),
-                          items: crops.value.map((crop) {
+                          items: crops.map((crop) {
                             return DropdownMenuItem(
                               value: crop,
                               child: Text(
-                                crop.name,
+                                crop.cropname,
                                 style: GoogleFonts.poppins(),
                               ),
                             );
@@ -227,7 +218,7 @@ class ScanPage extends HookConsumerWidget {
 
               const SizedBox(height: 24),
 
-              // --- Image preview / placeholder ---
+              // 📸 Image preview / placeholder
               AnimatedSwitcher(
                 duration: const Duration(milliseconds: 500),
                 child: imageFile.value != null
@@ -247,7 +238,7 @@ class ScanPage extends HookConsumerWidget {
 
               const SizedBox(height: 24),
 
-              // --- Camera & Gallery buttons ---
+              // 📷 Camera & Gallery buttons
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
@@ -272,7 +263,7 @@ class ScanPage extends HookConsumerWidget {
 
               const SizedBox(height: 32),
 
-              // --- Analyze button ---
+              // 🔍 Analyze button
               SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(
@@ -335,12 +326,10 @@ class ScanPage extends HookConsumerWidget {
                   .shimmer(
                     duration: const Duration(milliseconds: 1500),
                     color: _safeWithOpacity(_borderColor(brightness), 0.35),
-                    angle: imageFile.value != null && !isProcessing.value
-                        ? 0.0
-                        : null,
                   ),
+
               const SizedBox(height: 90),
-              GoToDevToolsButton(),
+              const GoToDevToolsButton(),
             ],
           ),
         ),
@@ -492,8 +481,8 @@ class ScanPage extends HookConsumerWidget {
           padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
-            side: BorderSide(
-              color: const Color.fromARGB(255, 10, 10, 10),
+            side: const BorderSide(
+              color: Color.fromARGB(255, 10, 10, 10),
               width: 2,
             ),
           ),

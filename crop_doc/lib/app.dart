@@ -1,12 +1,11 @@
 // lib/app.dart
+import 'package:crop_doc/core/providers/locale_provider.dart';
+import 'package:crop_doc/core/providers/theme_mode_provider.dart';
 import 'package:crop_doc/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:go_router/go_router.dart';
-
-import 'shared/providers/locale_provider.dart';
-import 'shared/providers/theme_provider.dart';
 
 class CropDocApp extends ConsumerWidget {
   final GoRouter router;
@@ -15,7 +14,8 @@ class CropDocApp extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final locale = ref.watch(localeProvider);
+    final localeState = ref.watch(localeProvider);
+    final locale = localeState.locale;
     final themeMode = ref.watch(themeModeProvider);
 
     return MaterialApp.router(

@@ -1,8 +1,5 @@
 // ignore_for_file: deprecated_member_use
 
-import 'package:crop_doc/core/database/app_database.dart';
-import 'package:crop_doc/core/database/app_database_provider.dart';
-import 'package:crop_doc/core/services/sync_service.dart';
 import 'package:crop_doc/features/home/tabs/history_tab.dart';
 import 'package:crop_doc/features/home/tabs/profile_tab.dart';
 import 'package:crop_doc/features/home/tabs/samples_tab.dart';
@@ -87,14 +84,6 @@ class MainShellState extends ConsumerState<MainShell> {
               icon: LucideIcons.settings,
               onTap: () => context.push('/settings'),
             ),
-            _buildBubbleIcon(
-              context,
-              icon: LucideIcons.refreshCcw,
-              onTap: () async {
-                final db = ref.read(appDatabaseProvider);
-                await runSync(db);
-              },
-            ),
           ],
         ),
         body: IndexedStack(index: _currentIndex, children: _pages),
@@ -167,25 +156,6 @@ class MainShellState extends ConsumerState<MainShell> {
         ),
       ),
     );
-  }
-}
-
-Future<void> runSync(AppDatabase db, {VoidCallback? onSyncComplete}) async {
-  try {
-    await syncToServer(db);
-    await syncFromServer(db);
-
-    if (kDebugMode) {
-      print('✅ Sync complete');
-    }
-
-    if (onSyncComplete != null) {
-      onSyncComplete(); // 🔁 notify UI
-    }
-  } catch (e) {
-    if (kDebugMode) {
-      print('❌ Sync failed: $e');
-    }
   }
 }
 

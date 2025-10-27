@@ -1,19 +1,14 @@
-import 'dart:convert';
-import 'dart:math' as Math;
-
-import 'package:crop_doc/core/constants/app_strings.dart';
+import 'dart:math' as math;
+import 'package:crop_doc/core/providers/auth_provider.dart';
 import 'package:crop_doc/l10n/app_localizations.dart';
-import 'package:drift/drift.dart' hide Column;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:http/http.dart' as http;
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:glassmorphism/glassmorphism.dart';
-import '../../../core/database/app_database.dart';
 
 class RegistrationPage extends ConsumerStatefulWidget {
   const RegistrationPage({super.key});
@@ -128,10 +123,13 @@ class _RegistrationPageState extends ConsumerState<RegistrationPage>
   }
 
   Future<void> _submit() async {
+    final t = AppLocalizations.of(context)!;
+
+    // Validate form + consent
     if (!_formKey.currentState!.validate() || !consent) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(AppLocalizations.of(context)!.completeFormMessage),
+          content: Text(t.completeFormMessage),
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
@@ -144,60 +142,31 @@ class _RegistrationPageState extends ConsumerState<RegistrationPage>
     setState(() => _isSubmitting = true);
 
     try {
-      final db = getDatabaseInstance();
-      bool isSynced = false;
-      // ignore: unused_local_variable
-      String? serverId;
+      // Capture notifier BEFORE await
+      final authNotifier = ref.read(authProvider.notifier);
 
-      // --- Try registering with backend ---
-      try {
-        final response = await http.post(
-          Uri.parse('$baseUrl/users/'),
-          headers: {'Content-Type': 'application/json'},
-          body: jsonEncode({
-            'username': username,
-            'country': country,
-            'county': country == "Kenya" ? county : null,
-            'role': role,
-            'consent': true,
-          }),
-        );
-
-        if (response.statusCode == 200 || response.statusCode == 201) {
-          final data = jsonDecode(response.body);
-          serverId = data['user_id']; // 👈 This is saved as server_id
-          isSynced = true;
-        }
-      } catch (e) {
-        print("⚠️ Server unreachable, will register offline: $e");
-      }
-
-      // --- Save user locally ---
-      await db.insertUser(
-        UsersCompanion.insert(
-          username: Value(username),
-          country: country,
-          county: Value(country == "Kenya" ? county : null),
-          role: role,
-          consent: true,
-          isSynced: Value(isSynced),
-          serverId: Value(null),
-        ),
+      // Await register (completes on success, throws on failure)
+      await authNotifier.register(
+        name: username,
+        email: '$username@cropdoc.com',
+        country: country,
+        county: country == "Kenya" ? county ?? '' : '',
       );
 
       if (!mounted) return;
+
+      // registration completed successfully
       context.go('/scan');
     } catch (e, stack) {
       if (kDebugMode) {
-        print("❌ Local save failed: $e\n$stack");
+        print("❌ Registration failed: $e\n$stack");
       }
-
       if (mounted) {
         showDialog(
           context: context,
           builder: (_) => AlertDialog(
             title: const Text("Error"),
-            content: const Text("Could not complete registration."),
+            content: Text("Could not complete registration.\n$e"),
             actions: [
               TextButton(
                 onPressed: () => Navigator.of(context).pop(),
@@ -220,8 +189,8 @@ class _RegistrationPageState extends ConsumerState<RegistrationPage>
           decoration: BoxDecoration(
             gradient: RadialGradient(
               center: Alignment(
-                0.5 + 0.2 * Math.sin(_animationController.value * 3.14),
-                0.5 + 0.2 * Math.cos(_animationController.value * 3.14),
+                0.5 + 0.2 * math.sin(_animationController.value * 3.14),
+                0.5 + 0.2 * math.cos(_animationController.value * 3.14),
               ),
               radius: 1.2,
               colors: [
@@ -248,15 +217,12 @@ class _RegistrationPageState extends ConsumerState<RegistrationPage>
     return Scaffold(
       body: Stack(
         children: [
-          // Animated background
           _buildBackground(),
-
           SafeArea(
             child: SingleChildScrollView(
               padding: const EdgeInsets.all(24),
               child: Column(
                 children: [
-                  // Header with icon
                   const SizedBox(height: 20),
                   Container(
                     padding: const EdgeInsets.all(16),
@@ -272,7 +238,6 @@ class _RegistrationPageState extends ConsumerState<RegistrationPage>
                   ).animate().scale(delay: 200.ms),
 
                   const SizedBox(height: 16),
-
                   Text(
                     t.registerTitle,
                     style: GoogleFonts.poppins(
@@ -292,12 +257,9 @@ class _RegistrationPageState extends ConsumerState<RegistrationPage>
                   ).animate().fadeIn(delay: 400.ms),
 
                   const SizedBox(height: 32),
-
-                  // Form in glass card
                   GlassmorphicContainer(
                     width: double.infinity,
-                    height:
-                        600, // Set to null to allow the container to size itself automatically, or provide a fixed value like 600
+                    height: 600,
                     borderRadius: 24,
                     blur: 20,
                     border: 1,
@@ -323,7 +285,6 @@ class _RegistrationPageState extends ConsumerState<RegistrationPage>
                         key: _formKey,
                         child: Column(
                           children: [
-                            // Name field
                             _buildTextField(
                               context: context,
                               label: t.nameLabel,
@@ -334,11 +295,8 @@ class _RegistrationPageState extends ConsumerState<RegistrationPage>
                               onChanged: (val) =>
                                   setState(() => username = val),
                               value: username,
-                            ).animate(delay: 500.ms).slideX(begin: 0.2, end: 0),
-
+                            ),
                             const SizedBox(height: 20),
-
-                            // Country dropdown
                             _buildDropdown(
                               context: context,
                               label: t.countryLabel,
@@ -347,31 +305,23 @@ class _RegistrationPageState extends ConsumerState<RegistrationPage>
                               items: ["Kenya", t.otherLabel],
                               onChanged: (val) =>
                                   setState(() => country = val!),
-                            ).animate(delay: 600.ms).slideX(begin: 0.2, end: 0),
-
+                            ),
                             if (showCounty) ...[
                               const SizedBox(height: 20),
-                              // County dropdown
                               _buildDropdown(
-                                    context: context,
-                                    label: t.countyLabel,
-                                    icon: LucideIcons.mapPin,
-                                    value: county,
-                                    items: counties,
-                                    validator: (val) =>
-                                        showCounty && val == null
-                                        ? t.countyRequired
-                                        : null,
-                                    onChanged: (val) =>
-                                        setState(() => county = val!),
-                                  )
-                                  .animate(delay: 700.ms)
-                                  .slideX(begin: 0.2, end: 0),
+                                context: context,
+                                label: t.countyLabel,
+                                icon: LucideIcons.mapPin,
+                                value: county,
+                                items: counties,
+                                validator: (val) => showCounty && val == null
+                                    ? t.countyRequired
+                                    : null,
+                                onChanged: (val) =>
+                                    setState(() => county = val!),
+                              ),
                             ],
-
                             const SizedBox(height: 20),
-
-                            // Role dropdown
                             _buildDropdown(
                               context: context,
                               label: t.roleLabel,
@@ -385,86 +335,57 @@ class _RegistrationPageState extends ConsumerState<RegistrationPage>
                                   setState(() => role = labelToRole(label, t));
                                 }
                               },
-                            ).animate(delay: 800.ms).slideX(begin: 0.2, end: 0),
-
+                            ),
                             const SizedBox(height: 20),
-
-                            // Consent checkbox
-                            Container(
-                              decoration: BoxDecoration(
-                                color: colorScheme.surfaceContainerHighest
-                                    .withAlpha(77),
-                                borderRadius: BorderRadius.circular(12),
+                            CheckboxListTile(
+                              value: consent,
+                              onChanged: (val) =>
+                                  setState(() => consent = val ?? false),
+                              title: Text(
+                                t.consentText,
+                                style: GoogleFonts.poppins(fontSize: 14),
                               ),
-                              child: CheckboxListTile(
-                                value: consent,
-                                onChanged: (val) =>
-                                    setState(() => consent = val ?? false),
-                                title: Text(
-                                  t.consentText,
-                                  style: GoogleFonts.poppins(
-                                    fontSize: 14,
-                                    color: colorScheme.onSurface,
-                                  ),
-                                ),
-                                controlAffinity:
-                                    ListTileControlAffinity.leading,
-                                contentPadding: const EdgeInsets.symmetric(
-                                  horizontal: 12,
-                                ),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                              ),
-                            ).animate(delay: 900.ms).fadeIn(),
-
+                              controlAffinity: ListTileControlAffinity.leading,
+                            ),
                             const SizedBox(height: 32),
-
-                            // Submit button
                             SizedBox(
-                                  width: double.infinity,
-                                  child: ElevatedButton.icon(
-                                    icon: _isSubmitting
-                                        ? const SizedBox()
-                                        : const Icon(
-                                            LucideIcons.userPlus,
-                                            size: 20,
-                                          ),
-                                    label: _isSubmitting
-                                        ? CircularProgressIndicator(
-                                            color: colorScheme.onPrimary,
-                                            strokeWidth: 2,
-                                          )
-                                        : Text(
-                                            t.registerButton,
-                                            style: GoogleFonts.poppins(
-                                              fontSize: 16,
-                                              fontWeight: FontWeight.w600,
-                                            ),
-                                          ),
-                                    onPressed: _isSubmitting ? null : _submit,
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: colorScheme.primary,
-                                      foregroundColor: colorScheme.onPrimary,
-                                      padding: const EdgeInsets.symmetric(
-                                        vertical: 18,
+                              width: double.infinity,
+                              child: ElevatedButton.icon(
+                                icon: _isSubmitting
+                                    ? const SizedBox()
+                                    : const Icon(
+                                        LucideIcons.userPlus,
+                                        size: 20,
                                       ),
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(16),
+                                label: _isSubmitting
+                                    ? CircularProgressIndicator(
+                                        color: colorScheme.onPrimary,
+                                        strokeWidth: 2,
+                                      )
+                                    : Text(
+                                        t.registerButton,
+                                        style: GoogleFonts.poppins(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.w600,
+                                        ),
                                       ),
-                                      elevation: 4,
-                                      shadowColor: colorScheme.primary
-                                          .withAlpha(77),
-                                    ),
+                                onPressed: _submit,
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: colorScheme.primary,
+                                  foregroundColor: colorScheme.onPrimary,
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 18,
                                   ),
-                                )
-                                .animate(delay: 1000.ms)
-                                .fadeIn()
-                                .shimmer(
-                                  delay: 1100.ms,
-                                  duration: 1500.ms,
-                                  color: colorScheme.secondary.withAlpha(25),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(16),
+                                  ),
+                                  elevation: 4,
+                                  shadowColor: colorScheme.primary.withAlpha(
+                                    77,
+                                  ),
                                 ),
+                              ),
+                            ),
                           ],
                         ),
                       ),

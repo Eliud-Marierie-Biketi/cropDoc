@@ -1,42 +1,55 @@
+import 'package:crop_doc/core/providers/auth_provider.dart';
+import 'package:crop_doc/core/providers/locale_provider.dart';
+import 'package:crop_doc/core/services/hive_init.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:crop_doc/app.dart';
-import 'package:crop_doc/core/database/app_database.dart';
-import 'package:crop_doc/core/services/connectivity_sync_listener.dart';
-// ignore: unused_import
-import 'package:crop_doc/shared/providers/global_providers.dart';
 import 'package:crop_doc/shared/router/app_router.dart';
-
-final appDatabaseProvider = Provider<AppDatabase>((ref) {
-  return AppDatabase();
-});
+import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:crop_doc/l10n/app_localizations.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await initHive();
 
-  final db = getDatabaseInstance();
+  runApp(const ProviderScope(child: CropDocApp()));
+}
 
-  // Trigger sync if internet is available at launch
-  final hasInternet = await isConnectedToInternet();
-  if (hasInternet) {
-    await trySyncWithBackend(db);
+class CropDocApp extends ConsumerStatefulWidget {
+  const CropDocApp({super.key});
+
+  @override
+  ConsumerState<CropDocApp> createState() => _CropDocAppState();
+}
+
+class _CropDocAppState extends ConsumerState<CropDocApp> {
+  @override
+  void initState() {
+    super.initState();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      // Load persisted user + locale
+      await ref.read(authProvider.notifier).loadFromHive();
+      await ref.read(localeProvider.notifier).loadLocale();
+    });
   }
 
-  // ✅ Start listening to connectivity changes
-  listenForConnectivity(db);
+  @override
+  Widget build(BuildContext context) {
+    final router = ref.watch(routerProvider);
+    final localeState = ref.watch(localeProvider);
 
-  runApp(
-    ProviderScope(
-      overrides: [
-        appDatabaseProvider.overrideWithValue(db),
-        // ✅ You don't need to override userServiceProvider since it's not dynamic
+    return MaterialApp.router(
+      debugShowCheckedModeBanner: false,
+      routerConfig: router,
+      locale: localeState.locale,
+      supportedLocales: AppLocalizations.supportedLocales,
+      localizationsDelegates: const [
+        AppLocalizations.delegate,
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
       ],
-      child: Consumer(
-        builder: (context, ref, _) {
-          final router = ref.watch(routerProvider);
-          return CropDocApp(router: router);
-        },
-      ),
-    ),
-  );
+      theme: ThemeData(useMaterial3: true, colorSchemeSeed: Colors.green),
+    );
+  }
 }

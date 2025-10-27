@@ -1,20 +1,16 @@
 // ignore_for_file: use_build_context_synchronously
 
-import 'dart:convert';
 import 'dart:io';
-
-import 'package:crop_doc/core/database/app_database.dart';
+import 'package:crop_doc/core/state/history_refresh_notifier.dart';
 import 'package:crop_doc/features/home/home_page.dart';
 import 'package:crop_doc/l10n/app_localizations.dart';
-import 'package:crop_doc/shared/notifiers/history_refresh_notifier.dart';
-import 'package:drift/drift.dart' hide Column;
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:go_router/go_router.dart';
+import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:screenshot/screenshot.dart';
 
-class ResultsPage extends StatelessWidget {
+class ResultsPage extends HookConsumerWidget {
   final Map<String, dynamic>? resultData;
   final File? imageFile;
 
@@ -26,24 +22,21 @@ class ResultsPage extends StatelessWidget {
   final ScreenshotController _screenshotController = ScreenshotController();
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final t = AppLocalizations.of(context)!;
-
     final result = resultData?['result'] ?? "Unknown";
     final confidence = (resultData?['confidence'] ?? 0.0) as double;
     final List<dynamic>? recommendations =
-        resultData?['recommendation'] as List<dynamic>?;
+        resultData?['recommendations'] as List<dynamic>?;
 
     return Scaffold(
       appBar: AppBar(
         title: Text(t.results),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
-          onPressed: () =>
-              Navigator.pop(context, true), // ✅ returns true to trigger refresh
+          onPressed: () => Navigator.pop(context, true),
         ),
       ),
-
       backgroundColor: Colors.grey[100],
       body: Padding(
         padding: const EdgeInsets.all(16),
@@ -94,7 +87,7 @@ class ResultsPage extends StatelessWidget {
                             ),
                             const SizedBox(height: 8),
                             SizedBox(
-                              height: 180, // adjust if needed
+                              height: 180,
                               child: ListView.builder(
                                 itemCount: recommendations.length,
                                 itemBuilder: (_, index) {
@@ -110,13 +103,12 @@ class ResultsPage extends StatelessWidget {
                                             CrossAxisAlignment.start,
                                         children: [
                                           _buildResultRow(
-                                            "Drug",
-                                            rec['drug_name'] ?? 'N/A',
+                                            "Treatment",
+                                            rec['treatment_method'] ?? 'N/A',
                                           ),
                                           _buildResultRow(
-                                            "Instructions",
-                                            rec['drug_administration_instructions'] ??
-                                                'N/A',
+                                            "Info",
+                                            rec['additional_info'] ?? 'N/A',
                                           ),
                                         ],
                                       ),
@@ -146,14 +138,14 @@ class ResultsPage extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
                 ElevatedButton.icon(
-                  onPressed: () => _downloadCard(context),
+                  onPressed: () => _saveAndGoToHistory(context, ref),
                   icon: const Icon(Icons.download),
                   label: const Text("Download"),
                 ),
                 ElevatedButton.icon(
-                  onPressed: () => _screenshotAndSave(context),
+                  onPressed: () => _saveAndGoToHistory(context, ref),
                   icon: const Icon(Icons.screenshot),
-                  label: const Text("Screenshot"),
+                  label: const Text("Save"),
                 ),
               ],
             ),
@@ -184,89 +176,30 @@ class ResultsPage extends StatelessWidget {
     );
   }
 
-  Future<void> _screenshotAndSave(BuildContext context) async {
+  Future<void> _saveAndGoToHistory(BuildContext context, WidgetRef ref) async {
     try {
-      if (imageFile == null) return;
+      final notifier = ref.read(historyRefreshProvider.notifier);
 
-      final originalImagePath = imageFile!.path;
+      final disease = resultData?['result'] as String? ?? "Unknown";
+      final confidence = (resultData?['confidence'] as num?)?.toDouble() ?? 0.0;
+      final limeImage = resultData?['lime_image'] as String? ?? '';
+      final recommendations = resultData?['recommendations'] as List<dynamic>?;
 
-      await _saveToHistory(originalImagePath);
+      await notifier.saveHistory(
+        imageUrl: limeImage,
+        cropName: "Crop", // TODO: replace with selected crop
+        disease: disease,
+        confidence: confidence,
+        recommendations: recommendations,
+      );
 
       if (context.mounted) {
-        HistoryRefreshNotifier.shouldRefresh = true;
-        context.pop(true); // close /results
-        mainShellKey.currentState?.switchTab(2); // go to history tab
+        context.pop(true);
+        mainShellKey.currentState?.switchTab(2);
       }
     } catch (e) {
       _showErrorDialog(context, "Failed to save result: $e");
     }
-  }
-
-  Future<void> _downloadCard(BuildContext context) async {
-    try {
-      if (imageFile == null) return;
-
-      final originalImagePath = imageFile!.path;
-
-      await _saveToHistory(originalImagePath);
-
-      if (context.mounted) {
-        context.pop(); // close /results
-        mainShellKey.currentState?.switchTab(2);
-      }
-    } catch (e) {
-      _showErrorDialog(context, "Download failed: $e");
-    }
-  }
-
-  Future<void> _saveToHistory(String imagePath) async {
-    final db = getDatabaseInstance();
-
-    // Extract values
-    final disease = resultData?['result'] as String? ?? "Unknown";
-    final confidence = (resultData?['confidence'] as num?)?.toString() ?? "0";
-    final recommendations = resultData?['recommendation'];
-    final recommendationsJson = recommendations != null
-        ? jsonEncode(recommendations)
-        : null;
-
-    // Insert new history entry
-    await db.insertHistory(
-      HistoryCompanion(
-        imagePath: Value(imagePath),
-        cropName: const Value("Crop"), // Replace with actual crop if available
-        disease: Value(disease),
-        confidence: Value(confidence),
-        timestamp: Value(DateTime.now()),
-        recommendationsJson: Value(recommendationsJson),
-      ),
-    );
-
-    // Clean up if more than 10
-    final allHistory = await db.getAllHistory();
-    if (allHistory.length > 10) {
-      final itemsToDelete = allHistory.sublist(10); // keep 10, remove the rest
-      for (final item in itemsToDelete) {
-        await db.deleteHistoryById(item.id);
-      }
-    }
-  }
-
-  // ignore: unused_element
-  void _showSavedDialog(BuildContext context, String path) {
-    showDialog(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: const Text("Saved"),
-        content: Text("File saved at:\n$path"),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text("OK"),
-          ),
-        ],
-      ),
-    );
   }
 
   void _showErrorDialog(BuildContext context, String message) {
