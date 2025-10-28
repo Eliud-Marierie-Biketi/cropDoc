@@ -89,7 +89,7 @@ class ResultsPage extends HookConsumerWidget {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              _buildResultRow("Result", result),
+                              _buildResultRow("Disease", result),
                               _buildResultRow(
                                 "Confidence",
                                 "${(confidence * 100).toStringAsFixed(1)}%",
