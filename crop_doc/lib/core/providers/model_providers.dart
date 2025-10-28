@@ -1,3 +1,4 @@
+import 'package:crop_doc/core/constants/app_strings.dart';
 import 'package:crop_doc/core/state/hive_state.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive/hive.dart';
@@ -73,6 +74,4 @@ final userStatsProvider =
 // SYNC SERVICE
 // ----------------------
 
-final syncServiceProvider = Provider(
-  (ref) => SyncService('http://127.0.0.1:8000'),
-);
+final syncServiceProvider = Provider((ref) => SyncService(baseUrl));

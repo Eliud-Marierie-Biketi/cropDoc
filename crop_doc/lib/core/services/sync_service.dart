@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:crop_doc/core/constants/app_strings.dart';
 import 'package:http/http.dart' as http;
 import 'package:crop_doc/core/database/models/treatment_model.dart';
 import 'package:crop_doc/core/database/models/user_stats_model.dart';
@@ -7,9 +8,7 @@ import 'package:crop_doc/core/database/models/crop_model.dart';
 import 'package:crop_doc/core/database/models/disease_model.dart';
 
 class SyncService {
-  final String baseUrl;
-
-  SyncService(this.baseUrl);
+  SyncService(String baseUrl);
 
   // 🌱 Fetch crops from the backend (no headers or auth required)
   Future<List<CropModel>> fetchCrops() async {
@@ -20,9 +19,9 @@ class SyncService {
       final List<dynamic> data = jsonDecode(response.body);
       return data.map((e) {
         return CropModel(
-          id: e['id'] ?? 0,
-          cropname: e['cropname'] ?? '',
-          description: e['description'] ?? '',
+          id: e['crop_id'] ?? 1,
+          cropname: e['crop_name'] ?? 'MAIZE',
+          description: e['crop_name'] ?? '',
           isSynced: true,
         );
       }).toList();

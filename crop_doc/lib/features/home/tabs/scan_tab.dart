@@ -48,6 +48,12 @@ class ScanPage extends HookConsumerWidget {
     final crops = ref.watch(cropProvider);
     final cropNotifier = ref.read(cropProvider.notifier);
 
+    print(
+      "Crops raw: ${crops.map((c) => {'id': c.id, 'cropname': c.cropname, 'description': c.description}).toList()}",
+    );
+
+    print("Crops loaded: ${crops.first.cropname}");
+
     final selectedCrop = useState<CropModel?>(
       crops.isNotEmpty ? crops.first : null,
     );
@@ -63,6 +69,9 @@ class ScanPage extends HookConsumerWidget {
           try {
             final syncService = ref.read(syncServiceProvider);
             final fetched = await syncService.fetchCrops();
+            for (var c in fetched) {
+              print('Fetched crop: ${c.id}, ${c.cropname}, ${c.description}');
+            }
             for (final c in fetched) {
               cropNotifier.addItem(c);
             }
@@ -152,69 +161,75 @@ class ScanPage extends HookConsumerWidget {
           padding: const EdgeInsets.all(16),
           child: Column(
             children: [
-              // 🌾 Crop dropdown
-              GlassmorphicContainer(
-                width: double.infinity,
-                height: 80,
-                borderRadius: 20,
-                blur: 20,
-                border: 2,
-                linearGradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [
-                    _safeWithOpacity(_cardBackground(brightness), 0.9),
-                    _safeWithOpacity(_cardBackground(brightness), 0.75),
-                  ],
-                ),
-                borderGradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [
-                    _safeWithOpacity(_borderColor(brightness), 0.9),
-                    _safeWithOpacity(_borderColor(brightness), 0.6),
-                  ],
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: Row(
-                    children: [
-                      Icon(
-                        LucideIcons.sprout,
-                        color: brightness == Brightness.light
-                            ? _borderColor(brightness)
-                            : Colors.lightGreenAccent.shade400,
-                        size: 28,
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: DropdownButton<CropModel>(
-                          value: selectedCrop.value,
-                          isExpanded: true,
-                          underline: const SizedBox(),
-                          dropdownColor: _cardBackground(brightness),
-                          style: GoogleFonts.poppins(
-                            fontSize: 16,
-                            color: brightness == Brightness.light
-                                ? Colors.black87
-                                : Colors.white70,
-                          ),
-                          items: crops.map((crop) {
-                            return DropdownMenuItem(
-                              value: crop,
-                              child: Text(
-                                crop.cropname,
-                                style: GoogleFonts.poppins(),
-                              ),
-                            );
-                          }).toList(),
-                          onChanged: (value) => selectedCrop.value = value,
-                        ),
-                      ),
+              // 🌾 Single Crop Display (since we have only one)
+              if (selectedCrop.value != null)
+                GlassmorphicContainer(
+                  width: double.infinity,
+                  height: 80,
+                  borderRadius: 20,
+                  blur: 20,
+                  border: 2,
+                  linearGradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      _safeWithOpacity(_cardBackground(brightness), 0.9),
+                      _safeWithOpacity(_cardBackground(brightness), 0.75),
                     ],
                   ),
+                  borderGradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      _safeWithOpacity(_borderColor(brightness), 0.9),
+                      _safeWithOpacity(_borderColor(brightness), 0.6),
+                    ],
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Row(
+                      children: [
+                        Icon(
+                          LucideIcons.sprout,
+                          color: brightness == Brightness.light
+                              ? _borderColor(brightness)
+                              : Colors.lightGreenAccent.shade400,
+                          size: 28,
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: Text(
+                            crops.first.cropname.isNotEmpty
+                                ? crops.first.cropname
+                                : 'MAIZE',
+                            style: GoogleFonts.poppins(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w600,
+                              color: brightness == Brightness.light
+                                  ? Colors.black87
+                                  : Colors.white70,
+                            ),
+                          ),
+                        ),
+                        Icon(
+                          LucideIcons.checkCircle2,
+                          color: Colors.green.shade700,
+                          size: 22,
+                        ),
+                      ],
+                    ),
+                  ),
+                )
+              else
+                Text(
+                  "No crop data available",
+                  style: GoogleFonts.poppins(
+                    fontSize: 16,
+                    color: brightness == Brightness.light
+                        ? Colors.black54
+                        : Colors.white70,
+                  ),
                 ),
-              ),
 
               const SizedBox(height: 24),
 

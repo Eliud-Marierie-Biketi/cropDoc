@@ -45,7 +45,7 @@ class HistoryRefreshNotifier extends StateNotifier<bool> {
       }
     }
 
-    // Update notifier state
+    // Notify provider and listeners
     _historyNotifier.refresh();
     shouldRefresh = true;
     state = !state; // trigger rebuilds

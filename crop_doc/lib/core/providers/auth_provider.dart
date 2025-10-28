@@ -16,7 +16,7 @@ class AuthState {
   final String? error;
 
   AuthState({
-    required this.isAuthenticated,
+    this.isAuthenticated = false,
     this.user,
     this.isLoading = false,
     this.error,
@@ -43,15 +43,46 @@ class AuthState {
 class AuthNotifier extends StateNotifier<AuthState> {
   final Box<UserModel> userBox;
 
-  AuthNotifier(this.userBox) : super(AuthState(isAuthenticated: false));
+  AuthNotifier(this.userBox) : super(AuthState()) {
+    _loadUserOnStartup();
+  }
+
+  /// Run once when the notifier is created
+  Future<void> _loadUserOnStartup() async {
+    print("🚀 AuthNotifier starting up...");
+    await loadFromHive();
+  }
 
   /// 🔹 Load user from Hive (offline)
   Future<void> loadFromHive() async {
-    final cached = userBox.get('current_user');
-    if (cached != null) {
-      state = state.copyWith(user: cached, isAuthenticated: true);
+    print("🔍 Checking Hive user...");
+    if (userBox.isNotEmpty) {
+      final user = userBox.getAt(0);
+      print("📦 Found user in Hive: $user");
+      if (user != null) {
+        state = state.copyWith(user: user, isAuthenticated: true);
+        print("✅ User authenticated from Hive");
+      }
     } else {
-      state = AuthState(isAuthenticated: false);
+      print("❌ Hive empty, user not found");
+    }
+  }
+
+  Future<void> setUser(UserModel data) async {
+    print("setUser() called");
+
+    try {
+      await userBox.clear();
+      print("userBox cleared");
+
+      await userBox.add(data);
+      print("user added to Hive");
+
+      state = state.copyWith(user: data, isAuthenticated: true);
+      print("state updated inside setUser: ${state.isAuthenticated}");
+    } catch (e, st) {
+      print("SETUSER ERROR: $e");
+      print(st);
     }
   }
 
@@ -61,6 +92,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
     required String email,
     required String country,
     required String county,
+    required String role,
   }) async {
     state = state.copyWith(isLoading: true, error: null);
     try {
@@ -73,90 +105,49 @@ class AuthNotifier extends StateNotifier<AuthState> {
           'email': email,
           'country': country,
           'county': county,
+          'role': role,
+          'consent': true,
         }),
       );
 
       if (res.statusCode == 201 || res.statusCode == 200) {
         final data = jsonDecode(res.body);
-        final user = UserModel(
-          id: data['id'],
+
+        print("WE HERE");
+        print("Before ${state.isAuthenticated}");
+
+        final userdata = UserModel(
+          id: data['user_id'],
           name: data['name'],
-          email: data['email'],
+          email: data['name'], // placeholder for backend gap
           country: data['country'],
           county: data['county'],
-          isSynced: true,
         );
 
-        await userBox.put('current_user', user);
-        state = state.copyWith(user: user, isAuthenticated: true);
+        print("About to call setUser() with $userdata");
+        await setUser(userdata);
+
+        print("After ${state.isAuthenticated}");
+        print("User data: ${state.user}");
       } else {
         state = state.copyWith(
           error: 'Failed to register user (${res.statusCode})',
         );
       }
-    } catch (e) {
+    } catch (e, st) {
+      print("REGISTER ERROR: $e");
+      print(st);
       state = state.copyWith(error: e.toString());
-    } finally {
-      state = state.copyWith(isLoading: false);
-    }
-  }
-
-  /// 🔹 Login by matching email in /api/users/
-  Future<void> login(String email) async {
-    state = state.copyWith(isLoading: true, error: null);
-    try {
-      final url = Uri.parse('$baseUrl/api/users/');
-      final res = await http.get(
-        url,
-        headers: {'Content-Type': 'application/json'},
-      );
-
-      if (res.statusCode == 200) {
-        final data = jsonDecode(res.body) as List;
-
-        final found = data.firstWhere(
-          (u) => u['email'] == email,
-          orElse: () => {},
-        );
-
-        if (found.isNotEmpty) {
-          final user = UserModel(
-            id: found['id'],
-            name: found['name'],
-            email: found['email'],
-            country: found['country'],
-            county: found['county'],
-            isSynced: true,
-          );
-
-          await userBox.put('current_user', user);
-          state = state.copyWith(user: user, isAuthenticated: true);
-        } else {
-          state = state.copyWith(error: 'User not found');
-        }
-      } else {
-        state = state.copyWith(error: 'Login failed (${res.statusCode})');
-      }
-    } catch (e) {
-      state = state.copyWith(error: e.toString());
-    } finally {
-      state = state.copyWith(isLoading: false);
     }
   }
 
   /// 🔹 Logout clears Hive user and resets state
   Future<void> logout() async {
     try {
-      // Remove the cached user from Hive
-      await userBox.delete('current_user');
-
-      // Reset auth state
+      await userBox.clear();
       state = AuthState(isAuthenticated: false);
-
-      // Optional: log for debugging
-      print('User logged out successfully');
+      print('🚪 User logged out successfully');
     } catch (e) {
-      // Optional: handle Hive errors
       state = state.copyWith(error: 'Logout failed: $e');
     }
   }

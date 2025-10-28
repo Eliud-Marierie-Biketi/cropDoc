@@ -2,13 +2,14 @@
 
 import 'dart:io';
 import 'package:crop_doc/core/state/history_refresh_notifier.dart';
-import 'package:crop_doc/features/home/home_page.dart';
 import 'package:crop_doc/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:go_router/go_router.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:screenshot/screenshot.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:go_router/go_router.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
 class ResultsPage extends HookConsumerWidget {
   final Map<String, dynamic>? resultData;
@@ -24,8 +25,11 @@ class ResultsPage extends HookConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final t = AppLocalizations.of(context)!;
+
     final result = resultData?['result'] ?? "Unknown";
-    final confidence = (resultData?['confidence'] ?? 0.0) as double;
+    final confidence = (resultData?['confidence'] as num?)?.toDouble() ?? 0.0;
+    final limeImageUrl = resultData?['lime_image'] as String?;
+    final savedImageUrl = resultData?['saved_image'] as String?;
     final List<dynamic>? recommendations =
         resultData?['recommendations'] as List<dynamic>?;
 
@@ -42,94 +46,130 @@ class ResultsPage extends HookConsumerWidget {
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
-            Screenshot(
-              controller: _screenshotController,
-              child: Card(
-                elevation: 6,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    if (imageFile != null)
-                      ClipRRect(
-                        borderRadius: const BorderRadius.vertical(
-                          top: Radius.circular(16),
-                        ),
-                        child: Image.file(
-                          imageFile!,
-                          height: 200,
-                          fit: BoxFit.cover,
-                        ),
-                      ),
-                    Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          _buildResultRow("Result", result),
-                          _buildResultRow(
-                            "Confidence",
-                            "${(confidence * 100).toStringAsFixed(1)}%",
-                          ),
-                          const SizedBox(height: 12),
-
-                          if (recommendations != null &&
-                              recommendations.isNotEmpty) ...[
-                            Text(
-                              "Recommendations",
-                              style: GoogleFonts.poppins(
-                                fontSize: 17,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.teal[700],
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            SizedBox(
-                              height: 180,
-                              child: ListView.builder(
-                                itemCount: recommendations.length,
-                                itemBuilder: (_, index) {
-                                  final rec = recommendations[index];
-                                  return Card(
-                                    margin: const EdgeInsets.symmetric(
-                                      vertical: 6,
-                                    ),
-                                    child: Padding(
-                                      padding: const EdgeInsets.all(12),
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          _buildResultRow(
-                                            "Treatment",
-                                            rec['treatment_method'] ?? 'N/A',
-                                          ),
-                                          _buildResultRow(
-                                            "Info",
-                                            rec['additional_info'] ?? 'N/A',
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  );
-                                },
-                              ),
-                            ),
-                          ] else
-                            Text(
-                              "No treatment needed",
-                              style: GoogleFonts.poppins(
-                                fontSize: 16,
-                                color: Colors.green[700],
-                                fontStyle: FontStyle.italic,
-                              ),
-                            ),
-                        ],
-                      ),
+            Expanded(
+              child: SingleChildScrollView(
+                child: Screenshot(
+                  controller: _screenshotController,
+                  child: Card(
+                    elevation: 6,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
                     ),
-                  ],
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        if (imageFile != null)
+                          ClipRRect(
+                            borderRadius: const BorderRadius.vertical(
+                              top: Radius.circular(16),
+                            ),
+                            child: Image.file(
+                              imageFile!,
+                              height: 200,
+                              fit: BoxFit.cover,
+                            ),
+                          ),
+                        if (limeImageUrl != null)
+                          Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 8.0),
+                            child: CachedNetworkImage(
+                              imageUrl: limeImageUrl,
+                              height: 180,
+                              fit: BoxFit.cover,
+                              placeholder: (context, url) => Container(
+                                height: 180,
+                                color: Colors.grey[300],
+                              ),
+                              errorWidget: (context, url, error) =>
+                                  const Icon(Icons.error),
+                            ),
+                          ),
+                        Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _buildResultRow("Result", result),
+                              _buildResultRow(
+                                "Confidence",
+                                "${(confidence * 100).toStringAsFixed(1)}%",
+                              ),
+                              if (savedImageUrl != null)
+                                Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 8,
+                                  ),
+                                  child: CachedNetworkImage(
+                                    imageUrl: savedImageUrl,
+                                    height: 180,
+                                    fit: BoxFit.cover,
+                                    placeholder: (context, url) => Container(
+                                      height: 180,
+                                      color: Colors.grey[300],
+                                    ),
+                                    errorWidget: (context, url, error) =>
+                                        const Icon(Icons.error),
+                                  ),
+                                ),
+                              const SizedBox(height: 12),
+                              if (recommendations != null &&
+                                  recommendations.isNotEmpty) ...[
+                                Text(
+                                  "Recommendations",
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 17,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.teal[700],
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                SizedBox(
+                                  height: 180,
+                                  child: ListView.builder(
+                                    itemCount: recommendations.length,
+                                    itemBuilder: (_, index) {
+                                      final rec = recommendations[index];
+                                      return Card(
+                                        margin: const EdgeInsets.symmetric(
+                                          vertical: 6,
+                                        ),
+                                        child: Padding(
+                                          padding: const EdgeInsets.all(12),
+                                          child: Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              _buildResultRow(
+                                                "Treatment",
+                                                rec['treatment_method'] ??
+                                                    'N/A',
+                                              ),
+                                              _buildResultRow(
+                                                "Info",
+                                                rec['additional_info'] ?? 'N/A',
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                ),
+                              ] else
+                                Text(
+                                  "No treatment needed",
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 16,
+                                    color: Colors.green[700],
+                                    fontStyle: FontStyle.italic,
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
               ),
             ),
@@ -180,23 +220,27 @@ class ResultsPage extends HookConsumerWidget {
     try {
       final notifier = ref.read(historyRefreshProvider.notifier);
 
+      final directory = await getApplicationDocumentsDirectory();
+      final fileName = '${DateTime.now().millisecondsSinceEpoch}.png';
+      await _screenshotController.captureAndSave(
+        directory.path,
+        fileName: fileName,
+      );
+      final filePath = '${directory.path}/$fileName';
+
       final disease = resultData?['result'] as String? ?? "Unknown";
       final confidence = (resultData?['confidence'] as num?)?.toDouble() ?? 0.0;
-      final limeImage = resultData?['lime_image'] as String? ?? '';
       final recommendations = resultData?['recommendations'] as List<dynamic>?;
 
       await notifier.saveHistory(
-        imageUrl: limeImage,
-        cropName: "Crop", // TODO: replace with selected crop
+        imageUrl: filePath,
+        cropName: "Maize",
         disease: disease,
         confidence: confidence,
         recommendations: recommendations,
       );
 
-      if (context.mounted) {
-        context.pop(true);
-        mainShellKey.currentState?.switchTab(2);
-      }
+      if (context.mounted) context.pop(true);
     } catch (e) {
       _showErrorDialog(context, "Failed to save result: $e");
     }

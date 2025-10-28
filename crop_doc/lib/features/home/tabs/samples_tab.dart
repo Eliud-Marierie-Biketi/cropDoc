@@ -6,7 +6,6 @@ import 'dart:io';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:crop_doc/core/constants/app_strings.dart';
 import 'package:crop_doc/l10n/app_localizations.dart';
-import 'package:crop_doc/shared/widgets/scanning_overlay.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:go_router/go_router.dart';
@@ -16,6 +15,20 @@ import 'package:lucide_icons/lucide_icons.dart';
 import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:shimmer/shimmer.dart';
+
+class SampleImage {
+  final String name;
+  final String url;
+
+  SampleImage({required this.name, required this.url});
+
+  factory SampleImage.fromJson(Map<String, dynamic> json) {
+    return SampleImage(
+      name: json['name'] as String,
+      url: json['url'] as String,
+    );
+  }
+}
 
 class SamplesPage extends HookWidget {
   const SamplesPage({super.key});
@@ -27,16 +40,19 @@ class SamplesPage extends HookWidget {
     final colorScheme = theme.colorScheme;
     final isLoading = useState(true);
 
-    final sampleImages = useState<List<String>>([]);
+    final sampleImages = useState<List<SampleImage>>([]);
 
     useEffect(() {
       Future(() async {
         try {
-          final res = await http.get(Uri.parse('$baseUrl/sample-images/'));
+          final res = await http.get(Uri.parse('$baseUrl/api/sample-images/'));
           if (res.statusCode == 200) {
             final Map<String, dynamic> data = jsonDecode(res.body);
-            final List<String> imageUrls = List<String>.from(data['images']);
-            sampleImages.value = imageUrls;
+            final List<dynamic> images = data['images'] ?? [];
+
+            sampleImages.value = images
+                .map((item) => SampleImage.fromJson(item))
+                .toList();
           }
         } catch (e) {
           debugPrint('Error loading samples: $e');
@@ -53,11 +69,11 @@ class SamplesPage extends HookWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const SizedBox(height: 130), // <-- This line added
-            // Header
+            const SizedBox(height: 130),
             Row(
               children: [
                 Icon(LucideIcons.image, color: colorScheme.primary, size: 24),
+                const SizedBox(width: 8),
                 Text(
                   t.sampleImages,
                   style: GoogleFonts.poppins(
@@ -66,6 +82,7 @@ class SamplesPage extends HookWidget {
                     color: colorScheme.onSurface,
                   ),
                 ),
+                const Spacer(),
                 IconButton(
                   icon: Icon(LucideIcons.filter, size: 20),
                   onPressed: () {},
@@ -74,8 +91,6 @@ class SamplesPage extends HookWidget {
               ],
             ),
             const SizedBox(height: 16),
-
-            // Grid
             Expanded(
               child: isLoading.value
                   ? _buildShimmerGrid()
@@ -99,7 +114,7 @@ class SamplesPage extends HookWidget {
     );
   }
 
-  Widget _buildImageCard(BuildContext context, String imagePath, int index) {
+  Widget _buildImageCard(BuildContext context, SampleImage image, int index) {
     return Hero(
       tag: 'sample-$index',
       child: Card(
@@ -107,12 +122,12 @@ class SamplesPage extends HookWidget {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         clipBehavior: Clip.antiAlias,
         child: InkWell(
-          onTap: () => _showImageDetails(context, imagePath, index),
+          onTap: () => _showImageDetails(context, image, index),
           borderRadius: BorderRadius.circular(16),
           child: Stack(
             children: [
               CachedNetworkImage(
-                imageUrl: imagePath,
+                imageUrl: image.url,
                 fit: BoxFit.cover,
                 height: 200,
                 width: double.infinity,
@@ -137,11 +152,14 @@ class SamplesPage extends HookWidget {
                     children: [
                       Icon(LucideIcons.image, size: 16, color: Colors.white70),
                       const SizedBox(width: 8),
-                      Text(
-                        'Sample ${index + 1}',
-                        style: GoogleFonts.poppins(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w500,
+                      Expanded(
+                        child: Text(
+                          image.name, // show actual name
+                          style: GoogleFonts.poppins(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w500,
+                          ),
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
                     ],
@@ -167,7 +185,7 @@ class SamplesPage extends HookWidget {
                     color: Theme.of(context).colorScheme.primary,
                     onPressed: () => simulateScanFromUrl(
                       context: context,
-                      imageUrl: imagePath,
+                      imageUrl: image.url,
                     ),
                   ),
                 ),
@@ -219,24 +237,12 @@ class SamplesPage extends HookWidget {
             'Add samples to see them here',
             style: GoogleFonts.poppins(color: Colors.grey[500]),
           ),
-          const SizedBox(height: 24),
-          ElevatedButton.icon(
-            onPressed: () {},
-            icon: Icon(LucideIcons.plus, size: 16),
-            label: Text('Add Sample'),
-            style: ElevatedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-            ),
-          ),
         ],
       ),
     );
   }
 
-  void _showImageDetails(BuildContext context, String imagePath, int index) {
+  void _showImageDetails(BuildContext context, SampleImage image, int index) {
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
@@ -264,7 +270,7 @@ class SamplesPage extends HookWidget {
                       child: Stack(
                         children: [
                           CachedNetworkImage(
-                            imageUrl: imagePath,
+                            imageUrl: image.url,
                             fit: BoxFit.cover,
                             height: 200,
                             width: double.infinity,
@@ -273,11 +279,6 @@ class SamplesPage extends HookWidget {
                             errorWidget: (context, url, error) =>
                                 const Icon(Icons.error),
                           ),
-
-                          // Scanning effect
-                          const Positioned.fill(child: ScanningOverlay()),
-
-                          // Gradient and icon bar at the bottom
                           Positioned(
                             bottom: 0,
                             left: 0,
@@ -294,27 +295,15 @@ class SamplesPage extends HookWidget {
                                   ],
                                 ),
                               ),
-                              child: Row(
-                                children: [
-                                  Icon(
-                                    LucideIcons.image,
-                                    size: 16,
-                                    color: Colors.white70,
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Text(
-                                    'Sample ${index + 1}',
-                                    style: GoogleFonts.poppins(
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                  ),
-                                ],
+                              child: Text(
+                                image.name, // show actual name
+                                style: GoogleFonts.poppins(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w500,
+                                ),
                               ),
                             ),
                           ),
-
-                          // Scan button
                           Positioned(
                             top: 12,
                             right: 12,
@@ -334,7 +323,7 @@ class SamplesPage extends HookWidget {
                                 color: Theme.of(context).colorScheme.primary,
                                 onPressed: () => simulateScanFromUrl(
                                   context: context,
-                                  imageUrl: imagePath,
+                                  imageUrl: image.url,
                                 ),
                               ),
                             ),
@@ -342,61 +331,6 @@ class SamplesPage extends HookWidget {
                         ],
                       ),
                     ),
-                  ),
-                  const SizedBox(height: 24),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    children: [
-                      ElevatedButton(
-                        onPressed: () => Navigator.pop(context),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.grey[200],
-                          foregroundColor: Colors.grey[800],
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 24,
-                            vertical: 14,
-                          ),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                        child: const Text('Cancel'),
-                      ),
-                      ElevatedButton.icon(
-                        onPressed: isLoading
-                            ? null
-                            : () async {
-                                setState(() => isLoading = true);
-                                await simulateScanFromUrl(
-                                  context: context,
-                                  imageUrl: imagePath,
-                                );
-                                if (context.mounted) Navigator.pop(context);
-                              },
-                        icon: isLoading
-                            ? const SizedBox(
-                                height: 16,
-                                width: 16,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  valueColor: AlwaysStoppedAnimation<Color>(
-                                    Colors.white,
-                                  ),
-                                ),
-                              )
-                            : const Icon(LucideIcons.scan, size: 16),
-                        label: Text(isLoading ? 'Scanning...' : 'Scan This'),
-                        style: ElevatedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 24,
-                            vertical: 14,
-                          ),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                      ),
-                    ],
                   ),
                 ],
               ),
@@ -443,82 +377,10 @@ class SamplesPage extends HookWidget {
     }
   }
 
-  void simulateScan({
-    required BuildContext context,
-    required File imageFile,
-  }) async {
-    // Show loading dialog
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => AlertDialog(
-        backgroundColor: Colors.white,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const CircularProgressIndicator(),
-            const SizedBox(height: 20),
-            Text('Analyzing sample...', style: GoogleFonts.poppins()),
-          ],
-        ),
-      ),
-    );
-
-    try {
-      final uri = Uri.parse('$baseUrl/mock-classify/');
-      final request = http.MultipartRequest('POST', uri);
-
-      request.files.add(
-        await http.MultipartFile.fromPath(
-          'image', // replace with your actual field name
-          imageFile.path,
-        ),
-      );
-
-      final response = await request.send();
-      final responseBody = await response.stream.bytesToString();
-
-      context.pop(); // Close loading dialog
-
-      if (response.statusCode == 200) {
-        final responseData = jsonDecode(responseBody);
-
-        context.push('/results', extra: responseData);
-      } else {
-        _showErrorDialog(
-          context,
-          'Server responded with ${response.statusCode}',
-        );
-      }
-    } catch (e) {
-      context.pop(); // Ensure dialog is closed on error
-      _showErrorDialog(context, 'Error analyzing image: $e');
-    }
-  }
-
-  void _showErrorDialog(BuildContext context, String message) {
-    showDialog(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: const Text("Error"),
-        content: Text(message),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text("OK"),
-          ),
-        ],
-      ),
-    );
-  }
-
   Future<void> analyzeImage({
     required BuildContext context,
     required File imageFile,
   }) async {
-    final isProcessing = ValueNotifier(true);
-
     try {
       final uri = Uri.parse('$baseUrl/mock-classify/');
       final request = http.MultipartRequest('POST', uri);
@@ -532,7 +394,6 @@ class SamplesPage extends HookWidget {
 
       if (response.statusCode == 200) {
         final responseData = jsonDecode(responseBody);
-
         if (context.mounted) {
           context.push(
             '/results',
@@ -558,8 +419,6 @@ class SamplesPage extends HookWidget {
           ),
         );
       }
-    } finally {
-      isProcessing.value = false;
     }
   }
 }

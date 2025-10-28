@@ -1,13 +1,10 @@
 import 'dart:io';
-import 'package:crop_doc/core/database/models/treatment_model.dart';
+import 'package:crop_doc/core/database/models/history_model.dart';
 import 'package:crop_doc/core/providers/model_providers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:visibility_detector/visibility_detector.dart';
-
-/// Example assumes each item in history represents
-/// a disease detection with stored imagePath or imageUrl
 
 class HistoryPage extends ConsumerStatefulWidget {
   const HistoryPage({super.key});
@@ -21,20 +18,16 @@ class _HistoryPageState extends ConsumerState<HistoryPage> {
 
   Future<void> _loadHistory() async {
     setState(() => _isLoading = true);
-    final syncService = ref.read(syncServiceProvider);
+    final box = ref.read(historyBoxProvider);
 
     try {
-      // Example: sync treatments and user stats when visible
-      final treatments = await syncService.fetchTreatments();
-      final stats = await syncService.fetchUserStats();
+      final historyList = box.values.toList()
+        ..sort((a, b) => b.timestamp.compareTo(a.timestamp));
 
-      final treatmentNotifier = ref.read(treatmentsProvider.notifier);
-      final statsNotifier = ref.read(userStatsProvider.notifier);
-
-      await treatmentNotifier.replaceAll(treatments);
-      await statsNotifier.replaceAll(stats);
+      final historyNotifier = ref.read(historyProvider.notifier);
+      await historyNotifier.replaceAll(historyList);
     } catch (e) {
-      debugPrint("⚠️ Sync failed: $e");
+      debugPrint("⚠️ Failed to load history: $e");
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -48,7 +41,7 @@ class _HistoryPageState extends ConsumerState<HistoryPage> {
 
   @override
   Widget build(BuildContext context) {
-    final treatments = ref.watch(treatmentsProvider);
+    final treatments = ref.watch(historyProvider);
 
     return VisibilityDetector(
       key: const Key('history-tab'),
@@ -88,7 +81,7 @@ class _HistoryPageState extends ConsumerState<HistoryPage> {
     );
   }
 
-  Widget _buildHistoryCard(BuildContext context, TreatmentModel treatment) {
+  Widget _buildHistoryCard(BuildContext context, HistoryModel treatment) {
     final colorScheme = Theme.of(context).colorScheme;
 
     return Card(
@@ -98,16 +91,14 @@ class _HistoryPageState extends ConsumerState<HistoryPage> {
       child: ListTile(
         leading: ClipRRect(
           borderRadius: BorderRadius.circular(8),
-          child: _buildNetworkImage(
-            treatment.additionalInfo, // suppose this field holds an image URL
-          ),
+          child: _buildImage(treatment.imageUrl),
         ),
         title: Text(
           treatment.disease,
           style: GoogleFonts.poppins(fontWeight: FontWeight.w600, fontSize: 16),
         ),
         subtitle: Text(
-          treatment.treatmentMethod,
+          treatment.cropName,
           style: GoogleFonts.poppins(fontSize: 13),
         ),
         trailing: Icon(Icons.chevron_right, color: colorScheme.primary),
@@ -116,21 +107,12 @@ class _HistoryPageState extends ConsumerState<HistoryPage> {
     );
   }
 
-  Widget _buildNetworkImage(String? url) {
-    if (url == null || url.isEmpty) {
+  Widget _buildImage(String? path) {
+    if (path == null || path.isEmpty)
       return const Icon(Icons.broken_image, size: 50);
-    }
-    if (url.startsWith('http')) {
-      return Image.network(
-        url,
-        width: 60,
-        height: 60,
-        fit: BoxFit.cover,
-        errorBuilder: (_, __, ___) => const Icon(Icons.broken_image, size: 50),
-      );
-    } else if (File(url).existsSync()) {
+    if (File(path).existsSync()) {
       return Image.file(
-        File(url),
+        File(path),
         width: 60,
         height: 60,
         fit: BoxFit.cover,
@@ -140,7 +122,7 @@ class _HistoryPageState extends ConsumerState<HistoryPage> {
     return const Icon(Icons.image_not_supported, size: 50);
   }
 
-  void _showDetailsDialog(BuildContext context, TreatmentModel t) {
+  void _showDetailsDialog(BuildContext context, HistoryModel t) {
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
@@ -150,14 +132,20 @@ class _HistoryPageState extends ConsumerState<HistoryPage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              "Method: ${t.treatmentMethod}",
+              "Crop: ${t.cropName}",
               style: GoogleFonts.poppins(fontSize: 14),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 6),
             Text(
-              "Info: ${t.additionalInfo}",
+              "Confidence: ${(t.confidence * 100).toStringAsFixed(1)}%",
               style: GoogleFonts.poppins(fontSize: 13),
             ),
+            const SizedBox(height: 6),
+            if (t.recommendationsJson != null)
+              Text(
+                "Recommendations: ${t.recommendationsJson}",
+                style: GoogleFonts.poppins(fontSize: 13),
+              ),
           ],
         ),
         actions: [

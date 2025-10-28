@@ -1,3 +1,4 @@
+import 'package:crop_doc/core/database/models/history_model.dart';
 import 'package:crop_doc/core/database/models/user_model.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:crop_doc/core/database/models/crop_model.dart';
@@ -13,10 +14,12 @@ Future<void> initHive() async {
   Hive.registerAdapter(DiseaseModelAdapter());
   Hive.registerAdapter(TreatmentModelAdapter());
   Hive.registerAdapter(UserStatsModelAdapter());
+  Hive.registerAdapter(HistoryModelAdapter());
 
   await Hive.openBox<UserModel>('users');
   await Hive.openBox<CropModel>('crops');
   await Hive.openBox<DiseaseModel>('diseases');
   await Hive.openBox<TreatmentModel>('treatments');
   await Hive.openBox<UserStatsModel>('userStats');
+  await Hive.openBox<HistoryModel>('history');
 }
