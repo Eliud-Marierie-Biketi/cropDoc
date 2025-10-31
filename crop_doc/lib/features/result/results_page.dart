@@ -2,6 +2,7 @@
 
 import 'dart:io';
 import 'package:crop_doc/core/state/history_refresh_notifier.dart';
+import 'package:crop_doc/features/home/home_page.dart';
 import 'package:crop_doc/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -92,7 +93,7 @@ class ResultsPage extends HookConsumerWidget {
                               _buildResultRow("Disease", result),
                               _buildResultRow(
                                 "Confidence",
-                                "${(confidence * 100).toStringAsFixed(1)}%",
+                                "${(confidence).toStringAsFixed(2)}%",
                               ),
                               if (savedImageUrl != null)
                                 Padding(
@@ -141,12 +142,12 @@ class ResultsPage extends HookConsumerWidget {
                                             children: [
                                               _buildResultRow(
                                                 "Treatment",
-                                                rec['treatment_method'] ??
-                                                    'N/A',
+                                                rec['drug_name'] ?? 'N/A',
                                               ),
                                               _buildResultRow(
                                                 "Info",
-                                                rec['additional_info'] ?? 'N/A',
+                                                rec['drug_administration_instructions'] ??
+                                                    'N/A',
                                               ),
                                             ],
                                           ),
@@ -228,9 +229,47 @@ class ResultsPage extends HookConsumerWidget {
       );
       final filePath = '${directory.path}/$fileName';
 
-      final disease = resultData?['result'] as String? ?? "Unknown";
+      final disease = resultData?['result'] ?? "Unknown";
       final confidence = (resultData?['confidence'] as num?)?.toDouble() ?? 0.0;
-      final recommendations = resultData?['recommendations'] as List<dynamic>?;
+
+      // Normalize recommendations
+      final rawRecommendations = resultData?['recommendations'];
+      List<Map<String, dynamic>> recommendations = [];
+
+      if (rawRecommendations is List) {
+        // ✅ Expected format: List<Map<String, dynamic>> (or List of maps with dynamic keys)
+        recommendations = rawRecommendations
+            .where((e) => e is Map)
+            .map(
+              (e) =>
+                  Map<String, dynamic>.from((e as Map).cast<String, dynamic>()),
+            )
+            .toList();
+      } else if (rawRecommendations is Map) {
+        // ✅ Handle case where API mistakenly sends a single map
+        recommendations = [
+          Map<String, dynamic>.from(
+            (rawRecommendations).cast<String, dynamic>(),
+          ),
+        ];
+      } else if (rawRecommendations is String &&
+          rawRecommendations.isNotEmpty) {
+        // ⚠️ Handle case where backend sends a string description
+        recommendations = [
+          {
+            "drug_name": rawRecommendations,
+            "drug_administration_instructions": "",
+          },
+        ];
+      } else {
+        // 💤 Fallback if null or unexpected type
+        recommendations = [
+          {
+            "drug_name": "No Recommendations",
+            "drug_administration_instructions": "None available.",
+          },
+        ];
+      }
 
       await notifier.saveHistory(
         imageUrl: filePath,
@@ -240,7 +279,13 @@ class ResultsPage extends HookConsumerWidget {
         recommendations: recommendations,
       );
 
-      if (context.mounted) context.pop(true);
+      if (context.mounted) {
+        // Pop back to MainShell first if ResultsPage was pushed on top
+        context.pop();
+
+        // Switch to History tab
+        mainShellKey.currentState?.switchTab(2);
+      }
     } catch (e) {
       _showErrorDialog(context, "Failed to save result: $e");
     }

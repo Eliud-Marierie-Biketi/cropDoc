@@ -1,9 +1,9 @@
 {
     "@@locale": "sw",
-    "appTitle": "ZaoDoc",
-    "loadingMessage": "Inapakia ZaoDoc...",
+    "appTitle": "MaizeDoc",
+    "loadingMessage": "Inapakia MaizeDoc...",
     "welcomeTitle": "Karibu!",
-    "welcomeDescription": "ZaoDoc hukusaidia kutambua magonjwa ya mahindi kwa kutumia kamera au picha kutoka kwa galeria, kisha upate mapendekezo ya tiba bila intaneti.",
+    "welcomeDescription": "MaizeDoc hukusaidia kutambua magonjwa ya mahindi kwa kutumia kamera au picha kutoka kwa galeria, kisha upate mapendekezo ya tiba bila intaneti.",
     "continueButton": "Endelea",
     "registerTitle": "Jisajili",
     "countryLabel": "Nchi",

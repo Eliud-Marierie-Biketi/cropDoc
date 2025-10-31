@@ -1,9 +1,9 @@
 {
     "@@locale": "en",
-    "appTitle": "ZaoDoc",
-    "loadingMessage": "Loading ZaoDoc...",
+    "appTitle": "MaizeDoc",
+    "loadingMessage": "Loading MaizeDoc...",
     "welcomeTitle": "Welcome!",
-    "welcomeDescription": "ZaoDoc helps you detect maize diseases using your camera or gallery and get treatment suggestions offline.",
+    "welcomeDescription": "MaizeDoc helps you detect maize diseases using your camera or gallery and get treatment suggestions offline.",
     "continueButton": "Continue",
     "registerTitle": "Register",
     "countryLabel": "Country",

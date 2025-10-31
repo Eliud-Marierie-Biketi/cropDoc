@@ -98,13 +98,13 @@ abstract class AppLocalizations {
   /// No description provided for @appTitle.
   ///
   /// In en, this message translates to:
-  /// **'ZaoDoc'**
+  /// **'MaizeDoc'**
   String get appTitle;
 
   /// No description provided for @loadingMessage.
   ///
   /// In en, this message translates to:
-  /// **'Loading ZaoDoc...'**
+  /// **'Loading MaizeDoc...'**
   String get loadingMessage;
 
   /// No description provided for @welcomeTitle.
@@ -116,7 +116,7 @@ abstract class AppLocalizations {
   /// No description provided for @welcomeDescription.
   ///
   /// In en, this message translates to:
-  /// **'ZaoDoc helps you detect maize diseases using your camera or gallery and get treatment suggestions offline.'**
+  /// **'MaizeDoc helps you detect maize diseases using your camera or gallery and get treatment suggestions offline.'**
   String get welcomeDescription;
 
   /// No description provided for @continueButton.

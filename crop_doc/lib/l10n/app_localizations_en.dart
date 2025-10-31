@@ -9,16 +9,16 @@ class AppLocalizationsEn extends AppLocalizations {
   AppLocalizationsEn([String locale = 'en']) : super(locale);
 
   @override
-  String get appTitle => 'ZaoDoc';
+  String get appTitle => 'MaizeDoc';
 
   @override
-  String get loadingMessage => 'Loading ZaoDoc...';
+  String get loadingMessage => 'Loading MaizeDoc...';
 
   @override
   String get welcomeTitle => 'Welcome!';
 
   @override
-  String get welcomeDescription => 'ZaoDoc helps you detect maize diseases using your camera or gallery and get treatment suggestions offline.';
+  String get welcomeDescription => 'MaizeDoc helps you detect maize diseases using your camera or gallery and get treatment suggestions offline.';
 
   @override
   String get continueButton => 'Continue';

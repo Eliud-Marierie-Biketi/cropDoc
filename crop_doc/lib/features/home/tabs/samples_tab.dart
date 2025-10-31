@@ -382,7 +382,7 @@ class SamplesPage extends HookWidget {
     required File imageFile,
   }) async {
     try {
-      final uri = Uri.parse('$baseUrl/mock-classify/');
+      final uri = Uri.parse('$baseUrl/api/classify/');
       final request = http.MultipartRequest('POST', uri);
 
       request.files.add(

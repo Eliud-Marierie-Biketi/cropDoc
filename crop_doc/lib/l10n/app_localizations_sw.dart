@@ -9,16 +9,16 @@ class AppLocalizationsSw extends AppLocalizations {
   AppLocalizationsSw([String locale = 'sw']) : super(locale);
 
   @override
-  String get appTitle => 'ZaoDoc';
+  String get appTitle => 'MaizeDoc';
 
   @override
-  String get loadingMessage => 'Inapakia ZaoDoc...';
+  String get loadingMessage => 'Inapakia MaizeDoc...';
 
   @override
   String get welcomeTitle => 'Karibu!';
 
   @override
-  String get welcomeDescription => 'ZaoDoc hukusaidia kutambua magonjwa ya mahindi kwa kutumia kamera au picha kutoka kwa galeria, kisha upate mapendekezo ya tiba bila intaneti.';
+  String get welcomeDescription => 'MaizeDoc hukusaidia kutambua magonjwa ya mahindi kwa kutumia kamera au picha kutoka kwa galeria, kisha upate mapendekezo ya tiba bila intaneti.';
 
   @override
   String get continueButton => 'Endelea';
