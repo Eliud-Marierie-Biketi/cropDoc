@@ -17,7 +17,7 @@ class HistoryModel extends HiveObject {
   double confidence;
 
   @HiveField(4)
-  String? recommendationsJson;
+  List<dynamic> recommendations;
 
   @HiveField(5)
   DateTime timestamp;
@@ -27,7 +27,7 @@ class HistoryModel extends HiveObject {
     required this.cropName,
     required this.disease,
     required this.confidence,
-    this.recommendationsJson,
+    required this.recommendations,
     required this.timestamp,
   });
 }

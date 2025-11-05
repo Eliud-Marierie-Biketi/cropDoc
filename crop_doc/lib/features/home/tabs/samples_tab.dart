@@ -248,8 +248,6 @@ class SamplesPage extends HookWidget {
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
       builder: (context) {
-        bool isLoading = false;
-
         return StatefulBuilder(
           builder: (context, setState) {
             return Container(
@@ -377,48 +375,147 @@ class SamplesPage extends HookWidget {
     }
   }
 
+  Future<bool> showCancelableLoader(BuildContext context) async {
+    return await showDialog<bool>(
+      barrierDismissible: false,
+      context: context,
+      builder: (_) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          content: Row(
+            children: [
+              const CircularProgressIndicator(),
+              const SizedBox(width: 20),
+              Expanded(
+                child: Text(
+                  "Analyzing image...\nThis may take a moment.",
+                  style: GoogleFonts.poppins(fontSize: 14),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () =>
+                  Navigator.pop(context, false), // <- cancel pressed
+              child: const Text("Cancel"),
+            ),
+          ],
+        );
+      },
+    ).then((value) => value ?? false);
+  }
+
   Future<void> analyzeImage({
     required BuildContext context,
     required File imageFile,
   }) async {
-    try {
-      final uri = Uri.parse('$baseUrl/api/classify/');
-      final request = http.MultipartRequest('POST', uri);
+    debugPrint("🟢 Starting analyzeImage...");
 
+    final client = http.Client(); // <--- allows cancel
+    bool cancelled = false;
+
+    // Show cancelable loading
+    final loaderFuture = showCancelableLoader(context).then((didCancel) {
+      if (didCancel) {
+        debugPrint("⛔ User cancelled analysis");
+        cancelled = true;
+        client.close(); // <--- actually stops upload + response
+      }
+    });
+
+    try {
+      final mlUri = Uri.parse(
+        'https://cropdoc-ml-backend.onrender.com/classify/',
+      );
+
+      final request = http.MultipartRequest('POST', mlUri);
       request.files.add(
         await http.MultipartFile.fromPath('image', imageFile.path),
       );
 
-      final response = await request.send();
-      final responseBody = await response.stream.bytesToString();
+      debugPrint("📤 Uploading to ML server...");
+      final streamedResponse = await client.send(
+        request,
+      ); // <--- client used here
 
-      if (response.statusCode == 200) {
-        final responseData = jsonDecode(responseBody);
-        if (context.mounted) {
+      // If user cancelled mid-upload
+      if (cancelled) return;
+
+      debugPrint("🔄 Response Status: ${streamedResponse.statusCode}");
+      final responseBody = await streamedResponse.stream.bytesToString();
+
+      if (streamedResponse.statusCode == 200) {
+        final data = jsonDecode(responseBody);
+
+        const baseML = 'https://cropdoc-ml-backend.onrender.com';
+        data['lime_image'] = '$baseML${data['lime_image']}';
+        data['saved_image'] = '$baseML${data['saved_image']}';
+        final modelClass = data['result']?.toString() ?? "";
+
+        // disease → DB lookup
+        final diseaseMapping = {
+          "Grey Leaf Spot": {"db_id": 6, "db_name": "Gray Leaf Spot"},
+          "Common Rust": {"db_id": 2, "db_name": "Common Rust"},
+          "Northern Leaf Blight": {
+            "db_id": 7,
+            "db_name": "Northern Leaf Blight",
+          },
+          "Fall Army Worm": {"db_id": 8, "db_name": "Fall Armyworm"},
+          "Northern Leaf Spot": {"db_id": 9, "db_name": "Northern Leaf Spot"},
+        };
+
+        List<dynamic> recommendations = [];
+
+        if (modelClass.toLowerCase() != "healthy") {
+          final diseaseInfo = diseaseMapping[modelClass];
+          if (diseaseInfo != null) {
+            final recUrl =
+                "https://cropdoc-f4xk.onrender.com/api/get-treatment/?id=${diseaseInfo["db_id"]}";
+            final recRes = await http.get(Uri.parse(recUrl));
+            if (recRes.statusCode == 200 && recRes.body.isNotEmpty) {
+              recommendations = jsonDecode(recRes.body);
+            }
+          }
+        }
+
+        data['recommendations'] = recommendations;
+
+        if (context.mounted && !cancelled) {
+          Navigator.pop(context); // Close loader
           context.push(
             '/results',
-            extra: {'data': responseData, 'imageFile': imageFile},
+            extra: {'data': data, 'imageFile': imageFile},
           );
         }
       } else {
-        throw Exception("Failed with status code ${response.statusCode}");
+        throw Exception(
+          "Failed (${streamedResponse.statusCode}): $responseBody",
+        );
       }
     } catch (e) {
-      if (context.mounted) {
+      if (!cancelled && context.mounted) {
+        Navigator.pop(context);
         showDialog(
           context: context,
           builder: (_) => AlertDialog(
             title: const Text("Error"),
-            content: Text("Failed to analyze image: $e"),
+            content: Text("Failed to analyze image:\n$e"),
             actions: [
               TextButton(
-                onPressed: () => Navigator.of(context).pop(),
+                onPressed: () => Navigator.pop(context),
                 child: const Text("OK"),
               ),
             ],
           ),
         );
       }
+    } finally {
+      client.close();
     }
+
+    await loaderFuture;
   }
 }

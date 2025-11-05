@@ -123,35 +123,130 @@ class _HistoryPageState extends ConsumerState<HistoryPage> {
   }
 
   void _showDetailsDialog(BuildContext context, HistoryModel t) {
+    final recommendations = t.recommendations;
+
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
-        title: Text(t.disease),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              "Crop: ${t.cropName}",
-              style: GoogleFonts.poppins(fontSize: 14),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              "Confidence: ${(t.confidence * 100).toStringAsFixed(1)}%",
-              style: GoogleFonts.poppins(fontSize: 13),
-            ),
-            const SizedBox(height: 6),
-            if (t.recommendationsJson != null)
-              Text(
-                "Recommendations: ${t.recommendationsJson}",
-                style: GoogleFonts.poppins(fontSize: 13),
-              ),
-          ],
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+        title: Text(
+          t.disease,
+          style: GoogleFonts.poppins(fontSize: 20, fontWeight: FontWeight.w600),
         ),
+        content: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _infoRow("Crop", t.cropName),
+              _infoRow("Confidence", "${(t.confidence).toStringAsFixed(2)}%"),
+              const SizedBox(height: 14),
+
+              if (recommendations.isNotEmpty) ...[
+                Text(
+                  "Recommendations",
+                  style: GoogleFonts.poppins(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 6),
+
+                ...recommendations.map((rec) {
+                  String formatted = "";
+
+                  if (rec is Map) {
+                    formatted = rec.entries
+                        .map(
+                          (e) =>
+                              "${e.key.toString().trim()}: ${e.value.toString().trim()}",
+                        )
+                        .join("\n");
+                  } else {
+                    formatted = rec.toString();
+                  }
+
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 3),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text("• "),
+                        Expanded(
+                          child: RichText(
+                            text: TextSpan(
+                              style: GoogleFonts.poppins(
+                                fontSize: 13.5,
+                                height: 1.25,
+                                color: Colors.black,
+                              ),
+                              children: formatted.split("\n").map((line) {
+                                final parts = line.split(":");
+                                if (parts.length < 2)
+                                  return TextSpan(text: line);
+
+                                final key = parts[0].trim();
+                                final value = parts.sublist(1).join(":").trim();
+
+                                return TextSpan(
+                                  children: [
+                                    TextSpan(
+                                      text: "$key: ",
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                    TextSpan(text: "$value\n"),
+                                  ],
+                                );
+                              }).toList(),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                }),
+              ] else
+                Text(
+                  "No recommendations available.",
+                  style: GoogleFonts.poppins(
+                    fontSize: 13.5,
+                    fontStyle: FontStyle.italic,
+                    color: Colors.grey[600],
+                  ),
+                ),
+            ],
+          ),
+        ),
+        actionsAlignment: MainAxisAlignment.end,
         actions: [
           TextButton(
+            style: TextButton.styleFrom(foregroundColor: Colors.green.shade800),
             onPressed: () => Navigator.pop(context),
-            child: const Text("Close"),
+            child: Text(
+              "Close",
+              style: GoogleFonts.poppins(fontWeight: FontWeight.w500),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _infoRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        children: [
+          Text(
+            "$label: ",
+            style: GoogleFonts.poppins(
+              fontWeight: FontWeight.w600,
+              fontSize: 14,
+            ),
+          ),
+          Expanded(
+            child: Text(value, style: GoogleFonts.poppins(fontSize: 14)),
           ),
         ],
       ),

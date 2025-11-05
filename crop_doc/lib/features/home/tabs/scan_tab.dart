@@ -1,6 +1,5 @@
 import 'dart:convert';
 import 'dart:io';
-import 'package:crop_doc/core/constants/app_strings.dart';
 import 'package:crop_doc/core/database/models/crop_model.dart';
 import 'package:crop_doc/core/providers/model_providers.dart';
 import 'package:crop_doc/shared/widgets/go_to_dev_tools.dart';
@@ -52,7 +51,11 @@ class ScanPage extends HookConsumerWidget {
       "Crops raw: ${crops.map((c) => {'id': c.id, 'cropname': c.cropname, 'description': c.description}).toList()}",
     );
 
-    print("Crops loaded: ${crops.first.cropname}");
+    if (crops.isNotEmpty) {
+      print("Crops loaded: ${crops.first.cropname}");
+    } else {
+      print("🌽 Default crop used: MAIZE");
+    }
 
     final selectedCrop = useState<CropModel?>(
       crops.isNotEmpty ? crops.first : null,
@@ -94,53 +97,141 @@ class ScanPage extends HookConsumerWidget {
       }
     }
 
-    // 🔹 Analyze image using /api/classify/
+    Future<bool> showCancelableLoader(BuildContext context) async {
+      return await showDialog<bool>(
+        barrierDismissible: false,
+        context: context,
+        builder: (_) {
+          return AlertDialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            content: Row(
+              children: [
+                const CircularProgressIndicator(),
+                const SizedBox(width: 20),
+                Expanded(
+                  child: Text(
+                    "Analyzing image...\nPlease wait.",
+                    style: GoogleFonts.poppins(fontSize: 14),
+                  ),
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false), // ← Cancel
+                child: const Text("Cancel"),
+              ),
+            ],
+          );
+        },
+      ).then((value) => value ?? false);
+    }
+
     Future<void> analyzeImage() async {
       if (imageFile.value == null || isProcessing.value) return;
       isProcessing.value = true;
 
-      try {
-        final uri = Uri.parse('$baseUrl/api/classify/');
-        final request = http.MultipartRequest('POST', uri)
-          ..files.add(
-            await http.MultipartFile.fromPath('image', imageFile.value!.path),
-          );
+      final client = http.Client(); // ← allows canceling
+      bool cancelled = false;
 
-        final response = await request.send();
+      // Show cancel dialog
+      final loaderFuture = showCancelableLoader(context).then((didCancel) {
+        if (didCancel) {
+          cancelled = true;
+          client.close(); // ← stops upload + response immediately
+        }
+      });
+
+      try {
+        debugPrint("🟢 Starting analyzeImage...");
+        debugPrint("📁 Image path: ${imageFile.value!.path}");
+
+        final mlUri = Uri.parse(
+          'https://cropdoc-ml-backend.onrender.com/classify/',
+        );
+
+        final request = http.MultipartRequest('POST', mlUri);
+
+        final fileToSend = await http.MultipartFile.fromPath(
+          'image',
+          imageFile.value!.path,
+        );
+
+        request.files.add(fileToSend);
+
+        debugPrint("📦 Multipart Request Created");
+
+        final response = await client.send(request); // ← client used here
+
+        if (cancelled) return; // ← if user pressed cancel mid-upload
+
+        debugPrint("🔄 Response Status: ${response.statusCode}");
+
         final responseBody = await response.stream.bytesToString();
+        if (cancelled) return; // ← also check here
+
+        debugPrint("📨 Raw Response Body: $responseBody");
 
         if (response.statusCode == 200) {
           final data = jsonDecode(responseBody);
 
-          // ✅ Expected format:
-          // {
-          // "result": "common rust",
-          // "confidence": 0.93,
-          // "lime_image": "http://...",
-          // "saved_image": "http://...",
-          // "recommendations": [...]
-          // }
+          const baseML = 'https://cropdoc-ml-backend.onrender.com';
+          data['lime_image'] = '$baseML${data['lime_image']}';
+          data['saved_image'] = '$baseML${data['saved_image']}';
 
-          if (context.mounted) {
+          final modelClass = data['result']?.toString() ?? "";
+
+          final diseaseMapping = {
+            "Grey Leaf Spot": {"db_id": 6, "db_name": "Gray Leaf Spot"},
+            "Common Rust": {"db_id": 2, "db_name": "Common Rust"},
+            "Northern Leaf Blight": {
+              "db_id": 7,
+              "db_name": "Northern Leaf Blight",
+            },
+            "Fall Army Worm": {"db_id": 8, "db_name": "Fall Armyworm"},
+            "Northern Leaf Spot": {"db_id": 9, "db_name": "Northern Leaf Spot"},
+          };
+
+          List<dynamic>? recommendations;
+
+          if (modelClass.toLowerCase() != "healthy") {
+            final diseaseInfo = diseaseMapping[modelClass];
+            if (diseaseInfo != null) {
+              final recUrl =
+                  "https://cropdoc-f4xk.onrender.com/api/get-treatment/?id=${diseaseInfo["db_id"]}";
+              final recRes = await http.get(Uri.parse(recUrl));
+              if (recRes.statusCode == 200 && recRes.body.isNotEmpty) {
+                recommendations = jsonDecode(recRes.body);
+              }
+            }
+          }
+
+          data['recommendations'] = recommendations ?? [];
+
+          if (context.mounted && !cancelled) {
+            Navigator.pop(context); // ← close loader
             context.push(
               '/results',
               extra: {'data': data, 'imageFile': imageFile.value},
             );
           }
         } else {
-          throw Exception("Failed (${response.statusCode})");
+          throw Exception("Failed (${response.statusCode}): $responseBody");
         }
-      } catch (e) {
-        debugPrint("❌ analyzeImage error: $e");
-        if (context.mounted) {
+        // ignore: unused_catch_stack
+      } catch (e, stack) {
+        if (!cancelled && context.mounted) {
+          Navigator.pop(context);
           await showDialog(
             context: context,
             builder: (_) => AlertDialog(
               title: const Text("Error"),
-              content: Text("Failed to analyze image: $e"),
+              content: Text("Failed to analyze image:\n\n$e"),
               actions: [
                 TextButton(
-                  onPressed: () => Navigator.of(context).pop(),
+                  onPressed: () => Navigator.pop(context),
                   child: const Text("OK"),
                 ),
               ],
@@ -148,7 +239,9 @@ class ScanPage extends HookConsumerWidget {
           );
         }
       } finally {
+        client.close();
         isProcessing.value = false;
+        await loaderFuture; // ensures loader closes cleanly
       }
     }
 
@@ -199,9 +292,11 @@ class ScanPage extends HookConsumerWidget {
                         const SizedBox(width: 16),
                         Expanded(
                           child: Text(
-                            crops.first.cropname.isNotEmpty
-                                ? crops.first.cropname
-                                : 'MAIZE',
+                            crops.isNotEmpty
+                                ? (crops.first.cropname.isNotEmpty
+                                      ? crops.first.cropname
+                                      : 'MAIZE')
+                                : 'No crop data',
                             style: GoogleFonts.poppins(
                               fontSize: 18,
                               fontWeight: FontWeight.w600,
@@ -222,11 +317,14 @@ class ScanPage extends HookConsumerWidget {
                 )
               else
                 Text(
-                  "No crop data available",
+                  (crops.isNotEmpty && crops.first.cropname.isNotEmpty)
+                      ? crops.first.cropname
+                      : 'MAIZE',
                   style: GoogleFonts.poppins(
-                    fontSize: 16,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
                     color: brightness == Brightness.light
-                        ? Colors.black54
+                        ? Colors.black87
                         : Colors.white70,
                   ),
                 ),

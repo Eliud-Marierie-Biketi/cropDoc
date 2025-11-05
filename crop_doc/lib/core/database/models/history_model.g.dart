@@ -21,7 +21,7 @@ class HistoryModelAdapter extends TypeAdapter<HistoryModel> {
       cropName: fields[1] as String,
       disease: fields[2] as String,
       confidence: fields[3] as double,
-      recommendationsJson: fields[4] as String?,
+      recommendations: (fields[4] as List).cast<dynamic>(),
       timestamp: fields[5] as DateTime,
     );
   }
@@ -39,7 +39,7 @@ class HistoryModelAdapter extends TypeAdapter<HistoryModel> {
       ..writeByte(3)
       ..write(obj.confidence)
       ..writeByte(4)
-      ..write(obj.recommendationsJson)
+      ..write(obj.recommendations)
       ..writeByte(5)
       ..write(obj.timestamp);
   }

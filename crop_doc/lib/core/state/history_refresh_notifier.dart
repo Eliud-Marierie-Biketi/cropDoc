@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'package:crop_doc/core/database/models/history_model.dart';
 import 'package:crop_doc/core/providers/model_providers.dart';
 import 'package:crop_doc/core/state/hive_state.dart';
@@ -25,16 +24,12 @@ class HistoryRefreshNotifier extends StateNotifier<bool> {
       cropName: cropName,
       disease: disease,
       confidence: confidence,
-      recommendationsJson: recommendations != null
-          ? jsonEncode(recommendations)
-          : null,
+      recommendations: recommendations ?? [],
       timestamp: DateTime.now(),
     );
 
-    // Save to Hive
     await _box.add(historyEntry);
 
-    // Keep only latest 10
     if (_box.length > 10) {
       final sorted = _box.values.toList()
         ..sort((a, b) => b.timestamp.compareTo(a.timestamp));
@@ -45,10 +40,9 @@ class HistoryRefreshNotifier extends StateNotifier<bool> {
       }
     }
 
-    // Notify provider and listeners
     _historyNotifier.refresh();
     shouldRefresh = true;
-    state = !state; // trigger rebuilds
+    state = !state;
   }
 }
 
