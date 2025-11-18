@@ -4,6 +4,7 @@ import 'package:crop_doc/features/home/tabs/history_tab.dart';
 import 'package:crop_doc/features/home/tabs/profile_tab.dart';
 import 'package:crop_doc/features/home/tabs/samples_tab.dart';
 import 'package:crop_doc/features/home/tabs/scan_tab.dart';
+import 'package:crop_doc/features/home/tabs/about_page.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -28,6 +29,8 @@ class MainShellState extends ConsumerState<MainShell> {
   int _currentIndex = 0;
 
   static const navItems = [
+    {'label': 'About', 'icon': LucideIcons.info},
+
     {'label': 'Scan', 'icon': LucideIcons.scan},
     {'label': 'Samples', 'icon': LucideIcons.image},
     {'label': 'History', 'icon': LucideIcons.history},
@@ -35,6 +38,7 @@ class MainShellState extends ConsumerState<MainShell> {
   ];
 
   final List<Widget> _pages = const [
+    AboutPage(),
     ScanPage(),
     SamplesPage(),
     HistoryPage(),

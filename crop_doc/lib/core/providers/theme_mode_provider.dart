@@ -6,7 +6,7 @@ const _themeBoxName = 'app_theme';
 
 /// ThemeNotifier manages ThemeMode (light, dark, system)
 class ThemeModeNotifier extends StateNotifier<ThemeMode> {
-  ThemeModeNotifier() : super(ThemeMode.system);
+  ThemeModeNotifier() : super(ThemeMode.light);
 
   /// Load saved theme mode from Hive
   Future<void> loadTheme() async {
@@ -41,7 +41,7 @@ class ThemeModeNotifier extends StateNotifier<ThemeMode> {
       case ThemeMode.dark:
         return 'dark';
       default:
-        return 'system';
+        return 'light';
     }
   }
 }

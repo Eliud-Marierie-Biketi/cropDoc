@@ -284,7 +284,7 @@ class ResultsPage extends HookConsumerWidget {
         context.pop();
 
         // Switch to History tab
-        mainShellKey.currentState?.switchTab(2);
+        mainShellKey.currentState?.switchTab(3);
       }
     } catch (e) {
       _showErrorDialog(context, "Failed to save result: $e");
