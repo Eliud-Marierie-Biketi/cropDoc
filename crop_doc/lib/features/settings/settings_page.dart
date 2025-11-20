@@ -1,6 +1,6 @@
 import 'package:crop_doc/core/constants/app_strings.dart';
 import 'package:crop_doc/core/providers/auth_provider.dart';
-import 'package:crop_doc/core/providers/locale_provider.dart';
+// import 'package:crop_doc/core/providers/locale_provider.dart';
 import 'package:crop_doc/core/providers/theme_mode_provider.dart';
 import 'package:crop_doc/features/auth/presentation/onboarding.dart';
 import 'package:crop_doc/l10n/app_localizations.dart';
@@ -85,7 +85,7 @@ class SettingsPage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final localeState = ref.watch(localeProvider);
+    // final localeState = ref.watch(localeProvider);
     final theme = ref.watch(themeModeProvider);
     final t = AppLocalizations.of(context)!;
 
@@ -95,25 +95,23 @@ class SettingsPage extends ConsumerWidget {
         padding: const EdgeInsets.all(24),
         children: [
           // 🌍 LANGUAGE
-          Text(
-            "🌍 ${t.languageLabel}",
-            style: Theme.of(context).textTheme.titleMedium,
-          ),
-          const SizedBox(height: 8),
-          DropdownButton<Locale>(
-            value: localeState.locale,
-            onChanged: (val) {
-              if (val != null) {
-                ref.read(localeProvider.notifier).setLocale(val);
-              }
-            },
-            items: const [
-              DropdownMenuItem(value: Locale('en'), child: Text("English")),
-              DropdownMenuItem(value: Locale('sw'), child: Text("Kiswahili")),
-            ],
-          ),
-
-          const SizedBox(height: 32),
+          // Text(
+          //   "🌍 ${t.languageLabel}",
+          //   style: Theme.of(context).textTheme.titleMedium,
+          // ),
+          // const SizedBox(height: 8),
+          // DropdownButton<Locale>(
+          //   value: localeState.locale,
+          //   onChanged: (val) {
+          //     if (val != null) {
+          //       ref.read(localeProvider.notifier).setLocale(val);
+          //     }
+          //   },
+          //   items: const [
+          //     DropdownMenuItem(value: Locale('en'), child: Text("English")),
+          //     DropdownMenuItem(value: Locale('sw'), child: Text("Kiswahili")),
+          //   ],
+          // ),
 
           // 🎨 THEME MODE
           Text(
@@ -142,7 +140,7 @@ class SettingsPage extends ConsumerWidget {
           ElevatedButton.icon(
             onPressed: () => _clearData(context, ref),
             icon: const Icon(Icons.logout),
-            label: Text(t.logoutButton),
+            label: Text('Clear Data'),
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.red.shade700,
               foregroundColor: Colors.white,

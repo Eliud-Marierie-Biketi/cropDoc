@@ -69,7 +69,7 @@ class SamplesPage extends HookWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const SizedBox(height: 130),
+            const SizedBox(height: 10),
             Row(
               children: [
                 Icon(LucideIcons.image, color: colorScheme.primary, size: 24),
