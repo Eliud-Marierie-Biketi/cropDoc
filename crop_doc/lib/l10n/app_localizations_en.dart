@@ -18,7 +18,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get welcomeTitle => 'Welcome!';
 
   @override
-  String get welcomeDescription => 'MaizeDoc helps you detect maize diseases using your camera or gallery and get treatment suggestions offline.';
+  String get welcomeDescription => 'MaizeDoc is an AI-driven mobile app providing digital extension services for maize farmers. The app uses a ConvDeit-tiny vision transformer to classify maize leaf diseases from uploaded images, reducing human error in diagnosis.It provides locally available treatment recommendations and uses Explainable AI (LIME) heatmaps to show which image regions informed the classification, promoting user trust and transparency in the AI\'s decision. This complements and assists manual efforts by traditional extension officers.';
 
   @override
   String get continueButton => 'Continue';
@@ -42,7 +42,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get roleLabel => 'Role';
 
   @override
-  String get consentText => 'I consent to store my registration info';
+  String get consentText => 'To optimize our services and analyze disease patterns, we require the collection of limited, non-identifying demographic data. This includes your Country, County/Region, and professional role (Farmer, Researcher, or Extension Officer).We do not collect or store any personal identifying information (like emails or passwords). By using this app, you consent to the internal use of this specific non-personal data.';
 
   @override
   String get registerButton => 'Finish';

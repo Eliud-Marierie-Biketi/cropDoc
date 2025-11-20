@@ -154,7 +154,7 @@ class SamplesPage extends HookWidget {
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
-                          image.name, // show actual name
+                          cleanName(image.name), // show actual name
                           style: GoogleFonts.poppins(
                             color: Colors.white,
                             fontWeight: FontWeight.w500,
@@ -294,7 +294,7 @@ class SamplesPage extends HookWidget {
                                 ),
                               ),
                               child: Text(
-                                image.name, // show actual name
+                                cleanName(image.name), // show actual name
                                 style: GoogleFonts.poppins(
                                   color: Colors.white,
                                   fontWeight: FontWeight.w500,
@@ -518,4 +518,8 @@ class SamplesPage extends HookWidget {
 
     await loaderFuture;
   }
+}
+
+String cleanName(String name) {
+  return name.replaceAll(RegExp(r'\.[a-zA-Z0-9]+$'), '');
 }

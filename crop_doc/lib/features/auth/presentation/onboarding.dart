@@ -1,6 +1,5 @@
 // ignore: library_prefixes
 import 'dart:math' as Math;
-import 'package:crop_doc/core/providers/locale_provider.dart';
 import 'package:crop_doc/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -27,14 +26,8 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage>
     {
       'title': 'welcomeTitle',
       'description': 'welcomeDescription',
-      'icon': LucideIcons.scan,
+      'icon': null, // We will use an image instead
       'color': Colors.blue,
-    },
-    {
-      'title': 'diseaseDetection',
-      'description': 'diseaseDetectionDesc',
-      'icon': LucideIcons.bug,
-      'color': Colors.green,
     },
   ];
 
@@ -54,14 +47,12 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage>
     super.dispose();
   }
 
-  void _continue() {
-    context.go('/registration');
-  }
+  void _continue() => context.go('/registration');
 
   Widget _buildBackground() {
     return AnimatedBuilder(
       animation: _animationController,
-      builder: (context, child) {
+      builder: (_, __) {
         return Container(
           decoration: BoxDecoration(
             gradient: RadialGradient(
@@ -96,28 +87,42 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage>
       blur: 20,
       border: 1,
       linearGradient: LinearGradient(
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
         colors: [Colors.white.withAlpha(77), Colors.white.withAlpha(25)],
       ),
       borderGradient: LinearGradient(
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
         colors: [Colors.white.withAlpha(127), Colors.white.withAlpha(51)],
       ),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Container(
-            width: 80,
-            height: 80,
-            decoration: BoxDecoration(
-              color: data['color'].withAlpha(50),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(data['icon'], size: 40, color: data['color']),
-          ).animate(delay: (200 * index).ms).scale().fadeIn(),
+          // Use asset image for the first feature
+          if (data['icon'] == null)
+            Container(
+              width: 120,
+              height: 120,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: Colors.green.shade700, width: 2),
+                color: data['color'].withAlpha(40),
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(16),
+                child: Image.asset('assets/images/logo.jpg', fit: BoxFit.cover),
+              ),
+            ).animate().scale().fadeIn()
+          else
+            Container(
+              width: 80,
+              height: 80,
+              decoration: BoxDecoration(
+                color: data['color'].withAlpha(50),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(data['icon'], size: 40, color: data['color']),
+            ).animate().scale().fadeIn(),
+
           const SizedBox(height: 20),
+
           Text(
             t.translate(data['title']),
             style: GoogleFonts.poppins(
@@ -125,8 +130,10 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage>
               fontWeight: FontWeight.w600,
               color: Colors.grey.shade800,
             ),
-          ).animate(delay: (300 * index).ms).slideY(begin: 0.5, end: 0),
+          ),
+
           const SizedBox(height: 12),
+
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 24),
             child: Text(
@@ -137,7 +144,7 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage>
                 color: Colors.grey.shade600,
               ),
             ),
-          ).animate(delay: (400 * index).ms).fadeIn(),
+          ),
         ],
       ),
     );
@@ -161,37 +168,7 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage>
           ),
         ),
       ),
-    ).animate(delay: 500.ms).fadeIn();
-  }
-
-  Widget _buildLanguagePicker() {
-    final localeState = ref.watch(localeProvider);
-    final String? localeCode = localeState.locale?.languageCode;
-
-    // Ensure a default if null
-    final String selected = localeCode ?? 'en';
-
-    return Align(
-      alignment: Alignment.topRight,
-      child: Padding(
-        padding: const EdgeInsets.only(top: 24, right: 24),
-        child: DropdownButton<String>(
-          value: selected,
-          underline: const SizedBox(),
-          dropdownColor: Colors.white,
-          icon: const Icon(Icons.language, color: Colors.black),
-          onChanged: (val) {
-            if (val != null) {
-              ref.read(localeProvider.notifier).setLocale(Locale(val));
-            }
-          },
-          items: const [
-            DropdownMenuItem(value: 'en', child: Text("English")),
-            DropdownMenuItem(value: 'sw', child: Text("Kiswahili")),
-          ],
-        ),
-      ),
-    );
+    ).animate().fadeIn();
   }
 
   @override
@@ -203,20 +180,20 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage>
       body: Stack(
         children: [
           _buildBackground(),
-          _buildLanguagePicker(),
+
           SafeArea(
             child: Column(
               children: [
                 Padding(
                   padding: const EdgeInsets.only(top: 40),
-                  child:
+                  child: Column(
+                    children: [
                       Text(
                             t.appTitle,
                             style: GoogleFonts.poppins(
                               fontSize: 36,
                               fontWeight: FontWeight.w800,
                               color: Colors.green.shade800,
-                              letterSpacing: 1.2,
                             ),
                           )
                           .animate(
@@ -229,14 +206,32 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage>
                             color: Colors.green.shade100,
                           )
                           .slideY(begin: -0.5, end: 0),
+
+                      const SizedBox(height: 8),
+
+                      Text(
+                            "Your Pocket AI Maize Doctor",
+                            style: GoogleFonts.poppins(
+                              fontSize: 16,
+                              color: Colors.green.shade700,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          )
+                          .animate(delay: 400.ms)
+                          .fadeIn()
+                          .moveY(begin: 20, end: 0),
+                    ],
+                  ),
                 ),
+
                 const SizedBox(height: 20),
+
                 SizedBox(
                   height: size.height * 0.55,
                   child: PageView.builder(
                     controller: _pageController,
                     itemCount: _onboardingData.length,
-                    onPageChanged: (int page) {
+                    onPageChanged: (page) {
                       setState(() => _currentPage = page);
                     },
                     itemBuilder: (context, index) {
@@ -251,9 +246,13 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage>
                     },
                   ),
                 ),
+
                 const SizedBox(height: 20),
+
                 _buildPagination(),
+
                 const Spacer(),
+
                 Padding(
                   padding: const EdgeInsets.only(
                     bottom: 40,
@@ -262,35 +261,33 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage>
                   ),
                   child:
                       ElevatedButton.icon(
-                            icon: const Icon(LucideIcons.arrowRight),
-                            label: Text(
-                              t.continueButton,
-                              style: GoogleFonts.poppins(
-                                fontSize: 18,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                            onPressed: _continue,
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.green.shade700,
-                              foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(
-                                vertical: 18,
-                                horizontal: 32,
-                              ),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(16),
-                              ),
-                              elevation: 8,
-                              shadowColor: Colors.green.shade200,
-                            ),
-                          )
-                          .animate(delay: 600.ms)
-                          .scaleXY(
-                            begin: 0.8,
-                            end: 1,
-                            curve: Curves.elasticOut,
+                        icon: const Icon(LucideIcons.arrowRight),
+                        label: Text(
+                          t.continueButton,
+                          style: GoogleFonts.poppins(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w600,
                           ),
+                        ),
+                        onPressed: _continue,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.green.shade700,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(
+                            vertical: 18,
+                            horizontal: 32,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          elevation: 8,
+                          shadowColor: Colors.green.shade200,
+                        ),
+                      ).animate().scaleXY(
+                        begin: 0.8,
+                        end: 1,
+                        curve: Curves.elasticOut,
+                      ),
                 ),
               ],
             ),
@@ -301,7 +298,6 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage>
   }
 }
 
-// Extend AppLocalizations for custom translation
 extension LocalizationExtension on AppLocalizations {
   String translate(String key) {
     switch (key) {
@@ -313,10 +309,6 @@ extension LocalizationExtension on AppLocalizations {
         return diseaseDetection;
       case 'diseaseDetectionDesc':
         return diseaseDetectionDesc;
-      case 'cropManagement':
-        return cropManagement;
-      case 'cropManagementDesc':
-        return cropManagementDesc;
       case 'continueButton':
         return continueButton;
       case 'appTitle':

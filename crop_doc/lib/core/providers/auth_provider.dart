@@ -95,6 +95,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
     required String role,
   }) async {
     state = state.copyWith(isLoading: true, error: null);
+    print("Starting registration for $name, $email with role $role");
     try {
       final url = Uri.parse('$baseUrl/api/users/');
       final res = await http.post(
@@ -122,6 +123,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
           email: data['name'], // placeholder for backend gap
           country: data['country'],
           county: data['county'],
+          role: data['role'],
         );
 
         print("About to call setUser() with $userdata");

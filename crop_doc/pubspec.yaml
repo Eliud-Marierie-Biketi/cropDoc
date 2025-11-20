@@ -63,6 +63,8 @@ dependencies:
   flutter_launcher_icons: ^0.14.4
   connectivity_plus: ^6.1.4
   visibility_detector: ^0.4.0+2
+  pdf: ^3.11.3
+  printing: ^5.14.2
 
 
 dev_dependencies:
@@ -94,18 +96,17 @@ flutter:
   assets:
     - assets/
     - assets/dummy_samples/
-    - assets/images/zaodoc_logo.png
-    - assets/images/logo.png
+    - assets/images/
 
 flutter_launcher_icons:
   android: true
   ios: true
-  image_path: "assets/images/zaodoc_logo.png"
+  image_path: "assets/images/logo.jpg"
   remove_alpha_ios: true
 
 flutter_native_splash:
   color: "#4CAF50"
-  image: assets/images/logo.png
+  image: assets/images/logo.jpg
   android: true
   ios: true
   android_gravity: center

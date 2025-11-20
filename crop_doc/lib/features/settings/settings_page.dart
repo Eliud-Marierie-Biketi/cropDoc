@@ -1,3 +1,4 @@
+import 'package:crop_doc/core/constants/app_strings.dart';
 import 'package:crop_doc/core/providers/auth_provider.dart';
 import 'package:crop_doc/core/providers/locale_provider.dart';
 import 'package:crop_doc/core/providers/theme_mode_provider.dart';
@@ -5,6 +6,7 @@ import 'package:crop_doc/features/auth/presentation/onboarding.dart';
 import 'package:crop_doc/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:http/http.dart' as http;
 
 class SettingsPage extends ConsumerWidget {
   const SettingsPage({super.key});
@@ -15,7 +17,7 @@ class SettingsPage extends ConsumerWidget {
       builder: (context) => AlertDialog(
         title: const Text("Clear all data?"),
         content: const Text(
-          "This will delete all local app data and log you out. Are you sure?",
+          "This will delete your data from the server and log you out. Are you sure?",
         ),
         actions: [
           TextButton(
@@ -37,13 +39,35 @@ class SettingsPage extends ConsumerWidget {
     if (confirm != true) return;
 
     try {
-      // 🧠 Access auth notifier
+      // 🔐 Access auth state
+      final authState = ref.read(authProvider);
       final authNotifier = ref.read(authProvider.notifier);
 
-      // 🧹 Clear user data & boxes
-      await authNotifier.logout(); // should clear Hive user + session
+      final user = authState.user;
 
-      // 🚀 Navigate to onboarding page fresh
+      // 🌐 Delete from the backend first
+      if (user != null) {
+        final url = Uri.parse("$baseUrl/api/users/${user.id}/");
+
+        try {
+          final response = await http.delete(url);
+
+          if (response.statusCode == 200 || response.statusCode == 204) {
+            debugPrint("User deleted from server");
+          } else {
+            debugPrint(
+              "Failed to delete user on server: ${response.statusCode}",
+            );
+          }
+        } catch (e) {
+          debugPrint("Server delete error: $e");
+        }
+      }
+
+      // 🧹 Local cleanup (Hive + session)
+      await authNotifier.logout();
+
+      // 🚀 Fresh navigation
       if (context.mounted) {
         Navigator.of(context).pushAndRemoveUntil(
           MaterialPageRoute(builder: (_) => const OnboardingPage()),

@@ -7,6 +7,8 @@ import 'package:crop_doc/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:pdf/widgets.dart' as pw;
+import 'package:printing/printing.dart';
 import 'package:screenshot/screenshot.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:go_router/go_router.dart';
@@ -59,32 +61,66 @@ class ResultsPage extends HookConsumerWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        if (imageFile != null)
-                          ClipRRect(
-                            borderRadius: const BorderRadius.vertical(
-                              top: Radius.circular(16),
-                            ),
-                            child: Image.file(
-                              imageFile!,
-                              height: 200,
-                              fit: BoxFit.cover,
-                            ),
-                          ),
-                        if (limeImageUrl != null)
-                          Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 8.0),
-                            child: CachedNetworkImage(
-                              imageUrl: limeImageUrl,
-                              height: 180,
-                              fit: BoxFit.cover,
-                              placeholder: (context, url) => Container(
-                                height: 180,
-                                color: Colors.grey[300],
+                        // --- Two images side-by-side ---
+                        if (imageFile != null || limeImageUrl != null) ...[
+                          const SizedBox(height: 12),
+
+                          Row(
+                            children: [
+                              // User Image
+                              Expanded(
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(12),
+                                  child: imageFile != null
+                                      ? Image.file(
+                                          imageFile!,
+                                          height: 120,
+                                          fit: BoxFit.cover,
+                                        )
+                                      : Container(
+                                          height: 120,
+                                          color: Colors.grey[300],
+                                          child: const Icon(
+                                            Icons.image_not_supported,
+                                          ),
+                                        ),
+                                ),
                               ),
-                              errorWidget: (context, url, error) =>
-                                  const Icon(Icons.error),
-                            ),
+
+                              const SizedBox(width: 12),
+
+                              // Lime Image
+                              Expanded(
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(12),
+                                  child: limeImageUrl != null
+                                      ? CachedNetworkImage(
+                                          imageUrl: limeImageUrl,
+                                          height: 120,
+                                          fit: BoxFit.cover,
+                                          placeholder: (context, url) =>
+                                              Container(
+                                                height: 120,
+                                                color: Colors.grey[300],
+                                              ),
+                                          errorWidget: (context, url, error) =>
+                                              const Icon(Icons.error),
+                                        )
+                                      : Container(
+                                          height: 120,
+                                          color: Colors.grey[300],
+                                          child: const Icon(
+                                            Icons.image_not_supported,
+                                          ),
+                                        ),
+                                ),
+                              ),
+                            ],
                           ),
+
+                          const SizedBox(height: 16),
+                        ],
+                        // --- Result Details ---
                         Padding(
                           padding: const EdgeInsets.all(16),
                           child: Column(
@@ -124,37 +160,80 @@ class ResultsPage extends HookConsumerWidget {
                                   ),
                                 ),
                                 const SizedBox(height: 8),
-                                SizedBox(
-                                  height: 180,
-                                  child: ListView.builder(
-                                    itemCount: recommendations.length,
-                                    itemBuilder: (_, index) {
-                                      final rec = recommendations[index];
-                                      return Card(
-                                        margin: const EdgeInsets.symmetric(
-                                          vertical: 6,
-                                        ),
-                                        child: Padding(
-                                          padding: const EdgeInsets.all(12),
-                                          child: Column(
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.start,
-                                            children: [
-                                              _buildResultRow(
-                                                "Treatment",
-                                                rec['drug_name'] ?? 'N/A',
+
+                                ListView.builder(
+                                  physics: const NeverScrollableScrollPhysics(),
+                                  shrinkWrap: true,
+                                  itemCount: recommendations.length,
+                                  itemBuilder: (_, index) {
+                                    final rec = recommendations[index];
+
+                                    final symptoms =
+                                        rec["symptoms"] ??
+                                        "No symptoms provided";
+                                    final treatment = rec["drug_name"] ?? "N/A";
+                                    final instructions =
+                                        rec["instructions"] ??
+                                        rec["drug_administration_instructions"] ??
+                                        "No instructions";
+                                    final prevention =
+                                        rec["prevention"] ??
+                                        "No prevention info";
+
+                                    return Card(
+                                      margin: const EdgeInsets.symmetric(
+                                        vertical: 8,
+                                      ),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      elevation: 3,
+                                      child: Padding(
+                                        padding: const EdgeInsets.all(14),
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            _buildSectionHeader("Symptoms"),
+                                            Text(
+                                              symptoms,
+                                              style: GoogleFonts.poppins(
+                                                fontSize: 15,
                                               ),
-                                              _buildResultRow(
-                                                "Info",
-                                                rec['drug_administration_instructions'] ??
-                                                    'N/A',
+                                            ),
+                                            const SizedBox(height: 10),
+
+                                            _buildSectionHeader("Treatment"),
+                                            Text(
+                                              treatment,
+                                              style: GoogleFonts.poppins(
+                                                fontSize: 15,
+                                                fontWeight: FontWeight.w600,
                                               ),
-                                            ],
-                                          ),
+                                            ),
+                                            const SizedBox(height: 6),
+
+                                            _buildSectionHeader("Instructions"),
+                                            Text(
+                                              instructions,
+                                              style: GoogleFonts.poppins(
+                                                fontSize: 15,
+                                              ),
+                                            ),
+                                            const SizedBox(height: 10),
+
+                                            _buildSectionHeader("Prevention"),
+                                            Text(
+                                              prevention,
+                                              style: GoogleFonts.poppins(
+                                                fontSize: 15,
+                                              ),
+                                            ),
+                                          ],
                                         ),
-                                      );
-                                    },
-                                  ),
+                                      ),
+                                    );
+                                  },
                                 ),
                               ] else
                                 Text(
@@ -179,7 +258,7 @@ class ResultsPage extends HookConsumerWidget {
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
                 ElevatedButton.icon(
-                  onPressed: () => _saveAndGoToHistory(context, ref),
+                  onPressed: () => _downloadPdf(context),
                   icon: const Icon(Icons.download),
                   label: const Text("Download"),
                 ),
@@ -211,6 +290,173 @@ class ResultsPage extends HookConsumerWidget {
           ),
           Expanded(
             child: Text(value, style: GoogleFonts.poppins(fontSize: 16)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _downloadPdf(BuildContext context) async {
+    final file = await _generatePdf(context);
+    if (file == null) return;
+
+    await Printing.sharePdf(
+      bytes: await file.readAsBytes(),
+      filename: file.path.split('/').last,
+    );
+  }
+
+  Future<File?> _generatePdf(BuildContext context) async {
+    try {
+      final pdf = pw.Document();
+
+      final imageBytes = imageFile != null
+          ? await imageFile!.readAsBytes()
+          : null;
+
+      final result = resultData?['result'] ?? "Unknown";
+      final confidence = (resultData?['confidence'] as num?)?.toDouble() ?? 0.0;
+
+      final List<dynamic> recommendations =
+          resultData?['recommendations'] ?? [];
+
+      final date = DateTime.now();
+      final formattedDate =
+          "${date.day}/${date.month}/${date.year} ${date.hour}:${date.minute}";
+
+      pdf.addPage(
+        pw.Page(
+          build: (pw.Context ctx) {
+            return pw.Column(
+              crossAxisAlignment: pw.CrossAxisAlignment.start,
+              children: [
+                pw.Text(
+                  "Crop Disease Diagnosis Report",
+                  style: pw.TextStyle(
+                    fontSize: 22,
+                    fontWeight: pw.FontWeight.bold,
+                  ),
+                ),
+                pw.SizedBox(height: 10),
+                pw.Text("Generated on: $formattedDate"),
+                pw.SizedBox(height: 20),
+
+                if (imageBytes != null)
+                  pw.Center(
+                    child: pw.Image(
+                      pw.MemoryImage(imageBytes),
+                      width: 300,
+                      height: 200,
+                      fit: pw.BoxFit.cover,
+                    ),
+                  ),
+                pw.SizedBox(height: 20),
+
+                pw.Text("Disease: $result", style: pw.TextStyle(fontSize: 16)),
+                pw.Text("Confidence: ${confidence.toStringAsFixed(2)}%"),
+                pw.SizedBox(height: 20),
+
+                pw.Text(
+                  "Recommendations:",
+                  style: pw.TextStyle(
+                    fontSize: 16,
+                    fontWeight: pw.FontWeight.bold,
+                  ),
+                ),
+                pw.SizedBox(height: 10),
+
+                if (recommendations.isEmpty)
+                  pw.Text("No treatment needed.")
+                else
+                  ...recommendations.map((rec) {
+                    final symptoms = rec["symptoms"] ?? "No symptoms provided";
+                    final treatmentName = rec["drug_name"] ?? "N/A";
+                    final instructions =
+                        rec["instructions"] ??
+                        rec["drug_administration_instructions"] ??
+                        "No instructions";
+                    final prevention =
+                        rec["prevention"] ?? "No prevention info";
+
+                    return pw.Container(
+                      margin: const pw.EdgeInsets.only(bottom: 16),
+                      padding: const pw.EdgeInsets.all(12),
+                      decoration: pw.BoxDecoration(
+                        border: pw.Border.all(width: 1),
+                        borderRadius: pw.BorderRadius.circular(8),
+                      ),
+                      child: pw.Column(
+                        crossAxisAlignment: pw.CrossAxisAlignment.start,
+                        children: [
+                          // --- Symptoms ---
+                          pw.Text(
+                            "Symptoms:",
+                            style: pw.TextStyle(
+                              fontWeight: pw.FontWeight.bold,
+                              fontSize: 14,
+                            ),
+                          ),
+                          pw.SizedBox(height: 4),
+                          pw.Text(symptoms),
+                          pw.SizedBox(height: 10),
+
+                          // --- Treatment ---
+                          pw.Text(
+                            "Treatment:",
+                            style: pw.TextStyle(
+                              fontWeight: pw.FontWeight.bold,
+                              fontSize: 14,
+                            ),
+                          ),
+                          pw.SizedBox(height: 4),
+                          pw.Text(treatmentName),
+                          pw.SizedBox(height: 4),
+                          pw.Text(instructions),
+                          pw.SizedBox(height: 10),
+
+                          // --- Prevention ---
+                          pw.Text(
+                            "Prevention:",
+                            style: pw.TextStyle(
+                              fontWeight: pw.FontWeight.bold,
+                              fontSize: 14,
+                            ),
+                          ),
+                          pw.SizedBox(height: 4),
+                          pw.Text(prevention),
+                        ],
+                      ),
+                    );
+                  }),
+              ],
+            );
+          },
+        ),
+      );
+
+      final output = await getApplicationDocumentsDirectory();
+      final file = File(
+        "${output.path}/result_${DateTime.now().millisecondsSinceEpoch}.pdf",
+      );
+      await file.writeAsBytes(await pdf.save());
+
+      return file;
+    } catch (e) {
+      _showErrorDialog(context, "Failed to generate PDF: $e");
+      return null;
+    }
+  }
+
+  void _showErrorDialog(BuildContext context, String message) {
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text("Error"),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("OK"),
           ),
         ],
       ),
@@ -277,6 +523,7 @@ class ResultsPage extends HookConsumerWidget {
         disease: disease,
         confidence: confidence,
         recommendations: recommendations,
+        date: DateTime.now().toIso8601String(), // <--- Add this
       );
 
       if (context.mounted) {
@@ -290,20 +537,15 @@ class ResultsPage extends HookConsumerWidget {
       _showErrorDialog(context, "Failed to save result: $e");
     }
   }
+}
 
-  void _showErrorDialog(BuildContext context, String message) {
-    showDialog(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: const Text("Error"),
-        content: Text(message),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text("OK"),
-          ),
-        ],
-      ),
-    );
-  }
+Widget _buildSectionHeader(String text) {
+  return Text(
+    text,
+    style: GoogleFonts.poppins(
+      fontSize: 16,
+      fontWeight: FontWeight.bold,
+      color: Colors.teal[800],
+    ),
+  );
 }

@@ -86,6 +86,9 @@ class _RegistrationPageState extends ConsumerState<RegistrationPage>
   @override
   void initState() {
     super.initState();
+
+    // Sort counties alphabetically
+    counties.sort();
     _animationController = AnimationController(
       vsync: this,
       duration: const Duration(seconds: 10),
@@ -104,11 +107,11 @@ class _RegistrationPageState extends ConsumerState<RegistrationPage>
 
   String roleToLabel(String code, AppLocalizations t) {
     switch (code) {
-      case 'Farmer':
+      case 'farmer':
         return t.farmer;
-      case 'Extension Officer':
+      case 'extension_officer':
         return t.extensionOfficer;
-      case 'Researcher':
+      case 'researcher':
         return t.researcher;
       default:
         return code;
@@ -342,11 +345,37 @@ class _RegistrationPageState extends ConsumerState<RegistrationPage>
                               value: consent,
                               onChanged: (val) =>
                                   setState(() => consent = val ?? false),
-                              title: Text(
-                                t.consentText,
-                                style: GoogleFonts.poppins(fontSize: 14),
-                              ),
                               controlAffinity: ListTileControlAffinity.leading,
+
+                              // 👇 Title now has preview text + More button
+                              title: GestureDetector(
+                                onTap: () =>
+                                    _showConsentDialog(context, t.consentText),
+                                child: RichText(
+                                  text: TextSpan(
+                                    children: [
+                                      TextSpan(
+                                        text: t.consentText.length > 80
+                                            ? t.consentText.substring(0, 80) +
+                                                  "..."
+                                            : t.consentText,
+                                        style: GoogleFonts.poppins(
+                                          fontSize: 14,
+                                          color: Colors.black,
+                                        ),
+                                      ),
+                                      TextSpan(
+                                        text: " More",
+                                        style: GoogleFonts.poppins(
+                                          fontSize: 14,
+                                          color: Colors.blue,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
                             ),
                             const SizedBox(height: 32),
                             SizedBox(
@@ -528,6 +557,29 @@ class _RegistrationPageState extends ConsumerState<RegistrationPage>
           ),
         ),
       ],
+    );
+  }
+
+  void _showConsentDialog(BuildContext context, String fullText) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text(
+            "Full Consent Text",
+            style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
+          ),
+          content: SingleChildScrollView(
+            child: Text(fullText, style: GoogleFonts.poppins(fontSize: 14)),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text("Close", style: GoogleFonts.poppins()),
+            ),
+          ],
+        );
+      },
     );
   }
 }

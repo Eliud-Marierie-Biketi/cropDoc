@@ -1,3 +1,4 @@
+import 'package:crop_doc/core/constants/app_strings.dart';
 import 'package:crop_doc/core/database/models/user_model.dart';
 import 'package:crop_doc/core/providers/model_providers.dart';
 import 'package:crop_doc/l10n/app_localizations.dart';
@@ -5,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:http/http.dart' as http;
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:glassmorphism/glassmorphism.dart';
@@ -38,9 +40,7 @@ class ProfilePage extends HookConsumerWidget {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text("Clear all data?"),
-        content: const Text(
-          "This will delete all local app data. Are you sure?",
-        ),
+        content: const Text("This will delete your data. Are you sure?"),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -58,11 +58,31 @@ class ProfilePage extends HookConsumerWidget {
       ),
     );
 
-    if (confirm == true) {
-      // Delete local Hive data
-      await ref.read(userBoxProvider).clear();
-      if (context.mounted) context.go('/onboarding');
+    if (confirm != true) return;
+
+    final userList = ref.read(userProvider);
+    final user = userList.isNotEmpty ? userList.first : null;
+
+    if (user != null) {
+      final url = Uri.parse("$baseUrl/api/users/${user.id}/");
+
+      try {
+        final response = await http.delete(url);
+
+        if (response.statusCode == 200 || response.statusCode == 204) {
+          debugPrint("User deleted on server");
+        } else {
+          debugPrint("Server delete failed: ${response.statusCode}");
+        }
+      } catch (e) {
+        debugPrint("Delete error: $e");
+      }
     }
+
+    // Always clear local data
+    await ref.read(userBoxProvider).clear();
+
+    if (context.mounted) context.go('/onboarding');
   }
 
   @override
@@ -78,8 +98,9 @@ class ProfilePage extends HookConsumerWidget {
 
     final name = useState(user?.name ?? '');
     final country = useState(user?.country ?? 'Kenya');
-    final county = useState(user?.county ?? 'Nairobi');
+    final county = useState(user?.county ?? '');
     final isSaving = useState(false);
+    final role = useState(user?.role ?? 'Farmer');
 
     Future<void> saveProfile() async {
       if (user == null) return;
@@ -92,6 +113,7 @@ class ProfilePage extends HookConsumerWidget {
         country: country.value,
         county: county.value,
         isSynced: false,
+        role: role.value,
       );
 
       // Update Hive
@@ -102,7 +124,7 @@ class ProfilePage extends HookConsumerWidget {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(t.profileDetails),
+            content: Text(t.profileSaved),
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12),
@@ -203,24 +225,113 @@ class ProfilePage extends HookConsumerWidget {
                       isEditable: true,
                     ),
                     const SizedBox(height: 16),
-                    _buildProfileField(
+
+                    // COUNTRY — now editable
+                    _buildDropdownField(
                       context: context,
                       icon: LucideIcons.globe,
                       label: t.countryLabel,
                       value: country.value,
-                      isEditable: false,
+                      options: const ["Kenya", "Other"],
+                      onChanged: (val) => country.value = val,
                     ),
-                    if (country.value == 'Kenya') ...[
-                      const SizedBox(height: 16),
-                      _buildProfileField(
+                    const SizedBox(height: 16),
+
+                    // COUNTY — editable only if Kenya
+                    if (country.value == "Kenya")
+                      _buildDropdownField(
                         context: context,
                         icon: LucideIcons.mapPin,
                         label: t.countyLabel,
                         value: county.value,
-                        isEditable: false,
+                        options: const [
+                          "Baringo",
+                          "Bomet",
+                          "Bungoma",
+                          "Busia",
+                          "Diaspora",
+                          "Elgeyo/Marakwet",
+                          "Embu",
+                          "Garissa",
+                          "Homa Bay",
+                          "Isiolo",
+                          "Kajiado",
+                          "Kakamega",
+                          "Kericho",
+                          "Kiambu",
+                          "Kilifi",
+                          "Kirinyaga",
+                          "Kisii",
+                          "Kisumu",
+                          "Kitui",
+                          "Kwale",
+                          "Laikipia",
+                          "Lamu",
+                          "Machakos",
+                          "Makueni",
+                          "Mandera",
+                          "Marsabit",
+                          "Meru",
+                          "Migori",
+                          "Mombasa",
+                          "Murang'a",
+                          "Nairobi",
+                          "Nakuru",
+                          "Nandi",
+                          "Narok",
+                          "Nyamira",
+                          "Nyandarua",
+                          "Nyeri",
+                          "Samburu",
+                          "Siaya",
+                          "Taita",
+                          "Tana River",
+                          "Tharaka-Nithi",
+                          "Trans Nzoia",
+                          "Turkana",
+                          "Uasin Gishu",
+                          "Vihiga",
+                          "Wajir",
+                          "West Pokot",
+                        ],
+                        onChanged: (val) => county.value = val,
                       ),
-                    ],
+
                     const SizedBox(height: 32),
+
+                    // ROLE — now editable
+                    // ROLE — now editable
+                    _buildDropdownField(
+                      context: context,
+                      icon: LucideIcons.badge,
+                      label: t.roleLabel,
+
+                      // 🔥 FIXED: convert stored raw value → translated label
+                      value: roleToLabel(role.value, t),
+
+                      // 🔥 FIXED: dropdown expects translated labels
+                      options: [t.farmer, t.extensionOfficer, t.researcher],
+
+                      onChanged: (selectedLabel) {
+                        final raw = labelToRole(
+                          selectedLabel,
+                          t,
+                        ); // convert back to raw English
+
+                        // Update UI state
+                        role.value = raw;
+
+                        // Update Hive user
+                        final box = ref.read(userBoxProvider);
+                        final index = box.values.toList().indexOf(user);
+
+                        userNotifier.updateItem(
+                          index,
+                          user.copyWith(role: raw, isSynced: false),
+                        );
+                      },
+                    ),
+
                     Row(
                       children: [
                         Icon(
@@ -363,4 +474,59 @@ class ProfilePage extends HookConsumerWidget {
       ],
     );
   }
+}
+
+Widget _buildDropdownField({
+  required BuildContext context,
+  required IconData icon,
+  required String label,
+  required String value,
+  required List<String> options,
+  required ValueChanged<String> onChanged,
+}) {
+  final colorScheme = Theme.of(context).colorScheme;
+
+  return Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Row(
+        children: [
+          Icon(icon, color: colorScheme.onSurface.withAlpha(153), size: 20),
+          const SizedBox(width: 12),
+          Text(
+            label,
+            style: GoogleFonts.poppins(
+              fontSize: 14,
+              color: colorScheme.onSurface.withAlpha(204),
+            ),
+          ),
+        ],
+      ),
+      const SizedBox(height: 8),
+      Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        decoration: BoxDecoration(
+          color: colorScheme.surfaceContainerHighest,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: DropdownButtonFormField<String>(
+          value: value,
+          decoration: const InputDecoration(border: InputBorder.none),
+          items: options.map((e) {
+            return DropdownMenuItem(
+              value: e,
+              child: Text(
+                e,
+                style: GoogleFonts.poppins(
+                  fontSize: 16,
+                  color: colorScheme.onSurface,
+                ),
+              ),
+            );
+          }).toList(),
+          onChanged: (val) => onChanged(val!),
+        ),
+      ),
+    ],
+  );
 }

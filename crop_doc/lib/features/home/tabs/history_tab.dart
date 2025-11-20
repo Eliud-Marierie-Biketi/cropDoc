@@ -84,6 +84,14 @@ class _HistoryPageState extends ConsumerState<HistoryPage> {
   Widget _buildHistoryCard(BuildContext context, HistoryModel treatment) {
     final colorScheme = Theme.of(context).colorScheme;
 
+    // Format the date nicely
+    final formattedDate =
+        "${treatment.timestamp.day.toString().padLeft(2, '0')}/"
+        "${treatment.timestamp.month.toString().padLeft(2, '0')}/"
+        "${treatment.timestamp.year} "
+        "${treatment.timestamp.hour.toString().padLeft(2, '0')}:"
+        "${treatment.timestamp.minute.toString().padLeft(2, '0')}";
+
     return Card(
       margin: const EdgeInsets.symmetric(vertical: 8),
       elevation: 3,
@@ -101,7 +109,18 @@ class _HistoryPageState extends ConsumerState<HistoryPage> {
           treatment.cropName,
           style: GoogleFonts.poppins(fontSize: 13),
         ),
-        trailing: Icon(Icons.chevron_right, color: colorScheme.primary),
+        trailing: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            Text(
+              formattedDate,
+              style: GoogleFonts.poppins(fontSize: 12, color: Colors.grey[700]),
+            ),
+            const SizedBox(height: 4),
+            Icon(Icons.chevron_right, color: colorScheme.primary),
+          ],
+        ),
         onTap: () => _showDetailsDialog(context, treatment),
       ),
     );

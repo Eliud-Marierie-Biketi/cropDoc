@@ -47,6 +47,12 @@ class ScanPage extends HookConsumerWidget {
     final crops = ref.watch(cropProvider);
     final cropNotifier = ref.read(cropProvider.notifier);
 
+    useEffect(() {
+      return () {
+        imageFile.value = null;
+      };
+    }, []);
+
     print(
       "Crops raw: ${crops.map((c) => {'id': c.id, 'cropname': c.cropname, 'description': c.description}).toList()}",
     );
@@ -120,7 +126,7 @@ class ScanPage extends HookConsumerWidget {
             ),
             actions: [
               TextButton(
-                onPressed: () => Navigator.pop(context, false), // ← Cancel
+                onPressed: () => Navigator.pop(context, false),
                 child: const Text("Cancel"),
               ),
             ],
@@ -133,14 +139,13 @@ class ScanPage extends HookConsumerWidget {
       if (imageFile.value == null || isProcessing.value) return;
       isProcessing.value = true;
 
-      final client = http.Client(); // ← allows canceling
+      final client = http.Client();
       bool cancelled = false;
 
-      // Show cancel dialog
       final loaderFuture = showCancelableLoader(context).then((didCancel) {
         if (didCancel) {
           cancelled = true;
-          client.close(); // ← stops upload + response immediately
+          client.close();
         }
       });
 
@@ -163,14 +168,14 @@ class ScanPage extends HookConsumerWidget {
 
         debugPrint("📦 Multipart Request Created");
 
-        final response = await client.send(request); // ← client used here
+        final response = await client.send(request);
 
-        if (cancelled) return; // ← if user pressed cancel mid-upload
+        if (cancelled) return;
 
         debugPrint("🔄 Response Status: ${response.statusCode}");
 
         final responseBody = await response.stream.bytesToString();
-        if (cancelled) return; // ← also check here
+        if (cancelled) return;
 
         debugPrint("📨 Raw Response Body: $responseBody");
 
@@ -203,7 +208,25 @@ class ScanPage extends HookConsumerWidget {
                   "https://cropdoc-f4xk.onrender.com/api/get-treatment/?id=${diseaseInfo["db_id"]}";
               final recRes = await http.get(Uri.parse(recUrl));
               if (recRes.statusCode == 200 && recRes.body.isNotEmpty) {
-                recommendations = jsonDecode(recRes.body);
+                final decoded = jsonDecode(recRes.body);
+
+                // Ensure it's a list
+                if (decoded is List && decoded.isNotEmpty) {
+                  recommendations = decoded.map((item) {
+                    return {
+                      "drug_id": item["drug_id"],
+                      "drug_name": item["drug_name"],
+                      "instructions": item["drug_administration_instructions"],
+                      "disease": item["disease"],
+                      "crop": item["crop"],
+                      "disease_name": item["disease_name"],
+                      "symptoms": item["symptoms"],
+                      "prevention": item["prevention"],
+                    };
+                  }).toList();
+                } else {
+                  recommendations = [];
+                }
               }
             }
           }
@@ -211,17 +234,17 @@ class ScanPage extends HookConsumerWidget {
           data['recommendations'] = recommendations ?? [];
 
           if (context.mounted && !cancelled) {
-            Navigator.pop(context); // ← close loader
-            context.push(
-              '/results',
-              extra: {'data': data, 'imageFile': imageFile.value},
-            );
+            Navigator.pop(context);
+
+            final img = imageFile.value; // keep reference for results
+            imageFile.value = null; // clear immediately
+
+            context.push('/results', extra: {'data': data, 'imageFile': img});
           }
         } else {
           throw Exception("Failed (${response.statusCode}): $responseBody");
         }
-        // ignore: unused_catch_stack
-      } catch (e, stack) {
+      } catch (e) {
         if (!cancelled && context.mounted) {
           Navigator.pop(context);
           await showDialog(
@@ -241,7 +264,7 @@ class ScanPage extends HookConsumerWidget {
       } finally {
         client.close();
         isProcessing.value = false;
-        await loaderFuture; // ensures loader closes cleanly
+        await loaderFuture;
       }
     }
 
@@ -254,7 +277,7 @@ class ScanPage extends HookConsumerWidget {
           padding: const EdgeInsets.all(16),
           child: Column(
             children: [
-              // 🌾 Single Crop Display (since we have only one)
+              // 🌾 Crop display
               if (selectedCrop.value != null)
                 GlassmorphicContainer(
                   width: double.infinity,
@@ -331,7 +354,7 @@ class ScanPage extends HookConsumerWidget {
 
               const SizedBox(height: 24),
 
-              // 📸 Image preview / placeholder
+              // 📸 Image preview
               AnimatedSwitcher(
                 duration: const Duration(milliseconds: 500),
                 child: imageFile.value != null
@@ -359,7 +382,13 @@ class ScanPage extends HookConsumerWidget {
                     context: context,
                     icon: LucideIcons.camera,
                     label: t.camera,
-                    onPressed: () => pickImage(ImageSource.camera),
+                    onPressed: () {
+                      _showImageInstructionsDialog(
+                        context,
+                        brightness,
+                        () => pickImage(ImageSource.camera),
+                      );
+                    },
                     color: _borderColor(brightness),
                     brightness: brightness,
                   ),
@@ -367,7 +396,13 @@ class ScanPage extends HookConsumerWidget {
                     context: context,
                     icon: LucideIcons.image,
                     label: t.gallery,
-                    onPressed: () => pickImage(ImageSource.gallery),
+                    onPressed: () {
+                      _showImageInstructionsDialog(
+                        context,
+                        brightness,
+                        () => pickImage(ImageSource.gallery),
+                      );
+                    },
                     color: _borderColor(brightness),
                     brightness: brightness,
                   ),
@@ -499,7 +534,16 @@ class ScanPage extends HookConsumerWidget {
 
     return Center(
       child: GestureDetector(
-        onTap: () => pickImage(ImageSource.camera),
+        onTap: () {
+          _showImageInstructionsDialog(
+            context,
+            brightness,
+            () => pickImage(
+              ImageSource.camera,
+            ), // callback executed after Continue
+          );
+        },
+
         child: Container(
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
@@ -607,4 +651,141 @@ class ScanPage extends HookConsumerWidget {
       ),
     );
   }
+}
+
+Future<void> _showImageInstructionsDialog(
+  BuildContext context,
+  Brightness brightness,
+  Future<void> Function() onContinue,
+) async {
+  return showDialog(
+    context: context,
+    barrierDismissible: false,
+    builder: (context) {
+      return AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        backgroundColor: brightness == Brightness.light
+            ? Colors.white
+            : const Color(0xFF1A1A1A),
+        title: Text(
+          "How to Take the Best Image",
+          style: GoogleFonts.poppins(fontWeight: FontWeight.w700),
+        ),
+        content: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildInstructionItem(
+                brightness,
+                "Ensure only one leaf is visible in the frame.",
+              ),
+              _buildInstructionItem(
+                brightness,
+                "Place the leaf on a flat, contrasting background.",
+              ),
+              _buildInstructionItem(
+                brightness,
+                "Capture the leaf in clear daylight or bright, natural light.",
+              ),
+              _buildInstructionItem(
+                brightness,
+                "Avoid shadows, blur, water droplets, or soil on the leaf.",
+              ),
+              _buildInstructionItem(
+                brightness,
+                "Hold the phone 20–30 cm above the leaf for sharp focus.",
+              ),
+
+              const SizedBox(height: 20),
+
+              // Sample images
+              Text(
+                "Examples:",
+                style: GoogleFonts.poppins(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 12),
+
+              ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: Image.asset(
+                  "assets/images/sample1.jpg",
+                  height: 140,
+                  fit: BoxFit.cover,
+                ),
+              ),
+              const SizedBox(height: 12),
+
+              ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: Image.asset(
+                  "assets/images/sample2.jpg",
+                  height: 140,
+                  fit: BoxFit.cover,
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: Text(
+              "Cancel",
+              style: GoogleFonts.poppins(
+                color: Colors.red,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF1B5E20),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            onPressed: () async {
+              Navigator.of(context).pop();
+              await onContinue();
+            },
+            child: Text(
+              "Continue",
+              style: GoogleFonts.poppins(
+                fontWeight: FontWeight.w600,
+                color: Colors.white,
+              ),
+            ),
+          ),
+        ],
+      );
+    },
+  );
+}
+
+Widget _buildInstructionItem(Brightness brightness, String text) {
+  return Padding(
+    padding: const EdgeInsets.symmetric(vertical: 6),
+    child: Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(
+          Icons.check_circle,
+          size: 18,
+          color: brightness == Brightness.light
+              ? const Color(0xFF1B5E20)
+              : Colors.lightGreenAccent,
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Text(
+            text,
+            style: GoogleFonts.poppins(fontSize: 14, height: 1.4),
+          ),
+        ),
+      ],
+    ),
+  );
 }

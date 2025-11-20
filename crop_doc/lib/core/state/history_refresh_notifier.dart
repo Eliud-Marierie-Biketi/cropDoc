@@ -18,6 +18,7 @@ class HistoryRefreshNotifier extends StateNotifier<bool> {
     required String disease,
     required double confidence,
     List<dynamic>? recommendations,
+    required String date,
   }) async {
     final historyEntry = HistoryModel(
       imageUrl: imageUrl,
@@ -25,7 +26,7 @@ class HistoryRefreshNotifier extends StateNotifier<bool> {
       disease: disease,
       confidence: confidence,
       recommendations: recommendations ?? [],
-      timestamp: DateTime.now(),
+      timestamp: DateTime.parse(date),
     );
 
     await _box.add(historyEntry);
