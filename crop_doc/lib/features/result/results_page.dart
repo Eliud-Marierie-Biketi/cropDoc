@@ -32,6 +32,7 @@ class ResultsPage extends HookConsumerWidget {
     final result = resultData?['result'] ?? "Unknown";
     final confidence = (resultData?['confidence'] as num?)?.toDouble() ?? 0.0;
     final limeImageUrl = resultData?['lime_image'] as String?;
+    // ignore: unused_local_variable
     final savedImageUrl = resultData?['saved_image'] as String?;
     final List<dynamic>? recommendations =
         resultData?['recommendations'] as List<dynamic>?;
@@ -131,24 +132,7 @@ class ResultsPage extends HookConsumerWidget {
                                 "Confidence",
                                 "${(confidence).toStringAsFixed(2)}%",
                               ),
-                              if (savedImageUrl != null)
-                                Padding(
-                                  padding: const EdgeInsets.symmetric(
-                                    vertical: 8,
-                                  ),
-                                  child: CachedNetworkImage(
-                                    imageUrl: savedImageUrl,
-                                    height: 180,
-                                    fit: BoxFit.cover,
-                                    placeholder: (context, url) => Container(
-                                      height: 180,
-                                      color: Colors.grey[300],
-                                    ),
-                                    errorWidget: (context, url, error) =>
-                                        const Icon(Icons.error),
-                                  ),
-                                ),
-                              const SizedBox(height: 12),
+                              SizedBox(height: 12),
                               if (recommendations != null &&
                                   recommendations.isNotEmpty) ...[
                                 Text(
