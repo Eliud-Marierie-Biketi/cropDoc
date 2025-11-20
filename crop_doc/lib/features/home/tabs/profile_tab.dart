@@ -1,5 +1,4 @@
 import 'package:crop_doc/core/constants/app_strings.dart';
-import 'package:crop_doc/core/database/models/user_model.dart';
 import 'package:crop_doc/core/providers/model_providers.dart';
 import 'package:crop_doc/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
@@ -15,24 +14,33 @@ import 'package:go_router/go_router.dart';
 class ProfilePage extends HookConsumerWidget {
   const ProfilePage({super.key});
 
+  // Convert raw DB role to localized label
   String roleToLabel(String role, AppLocalizations t) {
-    switch (role) {
-      case 'Farmer':
-        return t.farmer;
-      case 'Extension Officer':
-        return t.extensionOfficer;
-      case 'Researcher':
-        return t.researcher;
-      default:
-        return role;
-    }
+    role = role.trim().toLowerCase();
+    if (role == "farmer") return t.farmer;
+    if (role == "extension officer") return t.extensionOfficer;
+    if (role == "researcher") return t.researcher;
+    return t.farmer; // default
   }
 
+  // Convert localized label -> raw DB role
   String labelToRole(String label, AppLocalizations t) {
-    if (label == t.farmer) return 'Farmer';
-    if (label == t.extensionOfficer) return 'Extension Officer';
-    if (label == t.researcher) return 'Researcher';
-    return label;
+    if (label == t.farmer) return "farmer";
+    if (label == t.extensionOfficer) return "extension officer";
+    if (label == t.researcher) return "researcher";
+    return "farmer";
+  }
+
+  // Normalize DB value (in case future users store weird formats)
+  String normalizeRole(String? rawRole) {
+    if (rawRole == null) return "farmer";
+    rawRole = rawRole.trim().toLowerCase();
+
+    if (rawRole.contains("farmer")) return "farmer";
+    if (rawRole.contains("extension")) return "extension officer";
+    if (rawRole.contains("research")) return "researcher";
+
+    return "farmer";
   }
 
   Future<void> _clearData(BuildContext context, WidgetRef ref) async {
@@ -68,20 +76,13 @@ class ProfilePage extends HookConsumerWidget {
 
       try {
         final response = await http.delete(url);
-
-        if (response.statusCode == 200 || response.statusCode == 204) {
-          debugPrint("User deleted on server");
-        } else {
-          debugPrint("Server delete failed: ${response.statusCode}");
-        }
+        debugPrint("Delete status: ${response.statusCode}");
       } catch (e) {
         debugPrint("Delete error: $e");
       }
     }
 
-    // Always clear local data
     await ref.read(userBoxProvider).clear();
-
     if (context.mounted) context.go('/onboarding');
   }
 
@@ -90,49 +91,9 @@ class ProfilePage extends HookConsumerWidget {
     final t = AppLocalizations.of(context)!;
     final colorScheme = Theme.of(context).colorScheme;
 
-    // 👇 Watch user list (in most cases there’s only one user entry)
     final userList = ref.watch(userProvider);
     final userNotifier = ref.read(userProvider.notifier);
-
     final user = userList.isNotEmpty ? userList.first : null;
-
-    final name = useState(user?.name ?? '');
-    final country = useState(user?.country ?? 'Kenya');
-    final county = useState(user?.county ?? '');
-    final isSaving = useState(false);
-    final role = useState(user?.role ?? 'Farmer');
-
-    Future<void> saveProfile() async {
-      if (user == null) return;
-      isSaving.value = true;
-
-      final updatedUser = UserModel(
-        id: user.id,
-        name: name.value,
-        email: user.email,
-        country: country.value,
-        county: county.value,
-        isSynced: false,
-        role: role.value,
-      );
-
-      // Update Hive
-      final index = ref.read(userBoxProvider).values.toList().indexOf(user);
-      userNotifier.updateItem(index, updatedUser);
-      isSaving.value = false;
-
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(t.profileSaved),
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-          ),
-        );
-      }
-    }
 
     if (user == null) {
       return Scaffold(
@@ -146,62 +107,90 @@ class ProfilePage extends HookConsumerWidget {
       );
     }
 
+    // ---- Normalize then convert to UI label
+    final normalized = normalizeRole(user.role);
+    final roleLabel = useState(roleToLabel(normalized, t));
+
+    final name = useState(user.name);
+    final country = useState(user.country);
+    final county = useState(user.county);
+    final isSaving = useState(false);
+
+    Future<void> saveProfile() async {
+      isSaving.value = true;
+
+      final updatedUser = user.copyWith(
+        name: name.value,
+        country: country.value,
+        county: county.value,
+        role: labelToRole(roleLabel.value, t),
+        isSynced: false,
+      );
+
+      final box = ref.read(userBoxProvider);
+      final index = box.values.toList().indexOf(user);
+      userNotifier.updateItem(index, updatedUser);
+
+      isSaving.value = false;
+
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(t.profileSaved),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
+
     return Scaffold(
       appBar: AppBar(title: Text(t.profileDetails), centerTitle: true),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
-            // -- HEADER
+            /// Header Profile Card
             GlassmorphicContainer(
               width: double.infinity,
               height: 180,
               borderRadius: 20,
               blur: 20,
-              alignment: Alignment.center,
               border: 1,
+              alignment: Alignment.center,
               linearGradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
                 colors: [
-                  colorScheme.surface.withAlpha(153),
-                  colorScheme.surface.withAlpha(77),
+                  colorScheme.surface.withAlpha(150),
+                  colorScheme.surface.withAlpha(80),
                 ],
               ),
               borderGradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
                 colors: [
-                  Colors.white.withAlpha(102),
-                  Colors.white.withAlpha(51),
+                  Colors.white.withAlpha(120),
+                  Colors.white.withAlpha(40),
                 ],
               ),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    name.value,
-                    style: GoogleFonts.poppins(
-                      fontSize: 22,
-                      fontWeight: FontWeight.w600,
-                      color: colorScheme.onSurface,
-                    ),
+              child: Center(
+                child: Text(
+                  name.value,
+                  style: GoogleFonts.poppins(
+                    fontSize: 22,
+                    fontWeight: FontWeight.w600,
+                    color: colorScheme.onSurface,
                   ),
-                ],
+                ),
               ),
             ),
 
-            // -- FORM
+            const SizedBox(height: 16),
+
+            /// Info Card
             Card(
               elevation: 0,
+              color: colorScheme.surface,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(20),
-                side: BorderSide(
-                  color: colorScheme.outline.withAlpha(153),
-                  width: 1,
-                ),
+                side: BorderSide(color: colorScheme.outline.withAlpha(150)),
               ),
-              color: colorScheme.surface,
               child: Padding(
                 padding: const EdgeInsets.all(24),
                 child: Column(
@@ -212,169 +201,91 @@ class ProfilePage extends HookConsumerWidget {
                       style: GoogleFonts.poppins(
                         fontSize: 18,
                         fontWeight: FontWeight.w600,
-                        color: colorScheme.onSurface,
                       ),
                     ),
+
                     const SizedBox(height: 24),
+
+                    /// Name
                     _buildProfileField(
                       context: context,
                       icon: LucideIcons.user,
                       label: t.nameLabel,
                       value: name.value,
-                      onChanged: (val) => name.value = val,
                       isEditable: true,
+                      onChanged: (v) => name.value = v,
                     ),
+
                     const SizedBox(height: 16),
 
-                    // COUNTRY — now editable
+                    /// Country
                     _buildDropdownField(
                       context: context,
                       icon: LucideIcons.globe,
                       label: t.countryLabel,
                       value: country.value,
                       options: const ["Kenya", "Other"],
-                      onChanged: (val) => country.value = val,
+                      onChanged: (v) => country.value = v,
                     ),
+
                     const SizedBox(height: 16),
 
-                    // COUNTY — editable only if Kenya
+                    /// County (if Kenya)
                     if (country.value == "Kenya")
                       _buildDropdownField(
                         context: context,
                         icon: LucideIcons.mapPin,
                         label: t.countyLabel,
                         value: county.value,
-                        options: const [
-                          "Baringo",
-                          "Bomet",
-                          "Bungoma",
-                          "Busia",
-                          "Diaspora",
-                          "Elgeyo/Marakwet",
-                          "Embu",
-                          "Garissa",
-                          "Homa Bay",
-                          "Isiolo",
-                          "Kajiado",
-                          "Kakamega",
-                          "Kericho",
-                          "Kiambu",
-                          "Kilifi",
-                          "Kirinyaga",
-                          "Kisii",
-                          "Kisumu",
-                          "Kitui",
-                          "Kwale",
-                          "Laikipia",
-                          "Lamu",
-                          "Machakos",
-                          "Makueni",
-                          "Mandera",
-                          "Marsabit",
-                          "Meru",
-                          "Migori",
-                          "Mombasa",
-                          "Murang'a",
-                          "Nairobi",
-                          "Nakuru",
-                          "Nandi",
-                          "Narok",
-                          "Nyamira",
-                          "Nyandarua",
-                          "Nyeri",
-                          "Samburu",
-                          "Siaya",
-                          "Taita",
-                          "Tana River",
-                          "Tharaka-Nithi",
-                          "Trans Nzoia",
-                          "Turkana",
-                          "Uasin Gishu",
-                          "Vihiga",
-                          "Wajir",
-                          "West Pokot",
-                        ],
-                        onChanged: (val) => county.value = val,
+                        options: _kenyaCounties,
+                        onChanged: (v) => county.value = v,
                       ),
 
-                    const SizedBox(height: 32),
+                    const SizedBox(height: 24),
 
-                    // ROLE — now editable
-                    // ROLE — now editable
+                    /// Role — FIXED
                     _buildDropdownField(
                       context: context,
                       icon: LucideIcons.badge,
                       label: t.roleLabel,
 
-                      // 🔥 FIXED: convert stored raw value → translated label
-                      value: roleToLabel(role.value, t),
+                      // must match one of localized options
+                      value: roleLabel.value,
 
-                      // 🔥 FIXED: dropdown expects translated labels
                       options: [t.farmer, t.extensionOfficer, t.researcher],
 
-                      onChanged: (selectedLabel) {
-                        final raw = labelToRole(
-                          selectedLabel,
-                          t,
-                        ); // convert back to raw English
+                      onChanged: (newLabel) {
+                        roleLabel.value = newLabel;
 
-                        // Update UI state
-                        role.value = raw;
-
-                        // Update Hive user
                         final box = ref.read(userBoxProvider);
                         final index = box.values.toList().indexOf(user);
 
+                        // Save raw role (lowercase)
                         userNotifier.updateItem(
                           index,
-                          user.copyWith(role: raw, isSynced: false),
+                          user.copyWith(
+                            role: labelToRole(newLabel, t),
+                            isSynced: false,
+                          ),
                         );
                       },
                     ),
 
-                    Row(
-                      children: [
-                        Icon(
-                          LucideIcons.badge,
-                          color: colorScheme.onSurface.withAlpha(153),
-                          size: 20,
-                        ),
-                        const SizedBox(width: 12),
-                        Text(
-                          t.roleLabel,
-                          style: GoogleFonts.poppins(
-                            fontSize: 14,
-                            color: colorScheme.onSurface.withAlpha(204),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      decoration: BoxDecoration(
-                        color: colorScheme.surfaceContainerHighest,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
                     const SizedBox(height: 32),
+
+                    /// Save Button
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton(
                         onPressed: isSaving.value ? null : saveProfile,
                         style: ElevatedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 16),
                           backgroundColor: colorScheme.primary,
                           foregroundColor: colorScheme.onPrimary,
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          elevation: 0,
                         ),
                         child: isSaving.value
                             ? const CircularProgressIndicator(
                                 color: Colors.white,
-                                strokeWidth: 2,
                               )
                             : Row(
                                 mainAxisAlignment: MainAxisAlignment.center,
@@ -393,22 +304,24 @@ class ProfilePage extends HookConsumerWidget {
                       ),
                     ).animate().shimmer(
                       duration: 1500.ms,
-                      color: colorScheme.secondary.withAlpha(51),
-                      angle: 0.0,
+                      color: colorScheme.secondary.withAlpha(50),
                     ),
                   ],
                 ),
               ),
             ),
+
             const SizedBox(height: 48),
+
+            /// Logout / Clear Data
             ElevatedButton.icon(
               onPressed: () => _clearData(context, ref),
               icon: const Icon(Icons.logout),
               label: Text(t.logoutButton),
               style: ElevatedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 16),
                 backgroundColor: Colors.red.shade700,
                 foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 16),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
@@ -419,63 +332,107 @@ class ProfilePage extends HookConsumerWidget {
       ),
     );
   }
-
-  Widget _buildProfileField({
-    required BuildContext context,
-    required IconData icon,
-    required String label,
-    required String value,
-    required bool isEditable,
-    ValueChanged<String>? onChanged,
-  }) {
-    final colorScheme = Theme.of(context).colorScheme;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Icon(icon, color: colorScheme.onSurface.withAlpha(153), size: 20),
-            const SizedBox(width: 12),
-            Text(
-              label,
-              style: GoogleFonts.poppins(
-                fontSize: 14,
-                color: colorScheme.onSurface.withAlpha(204),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-          decoration: BoxDecoration(
-            color: colorScheme.surfaceContainerHighest,
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: isEditable
-              ? TextFormField(
-                  initialValue: value,
-                  style: GoogleFonts.poppins(
-                    fontSize: 16,
-                    color: colorScheme.onSurface,
-                  ),
-                  decoration: const InputDecoration.collapsed(hintText: ''),
-                  onChanged: onChanged,
-                )
-              : Text(
-                  value,
-                  style: GoogleFonts.poppins(
-                    fontSize: 16,
-                    color: colorScheme.onSurface,
-                  ),
-                ),
-        ),
-      ],
-    );
-  }
 }
 
+/// Kenya Counties
+const _kenyaCounties = [
+  "Baringo",
+  "Bomet",
+  "Bungoma",
+  "Busia",
+  "Diaspora",
+  "Elgeyo/Marakwet",
+  "Embu",
+  "Garissa",
+  "Homa Bay",
+  "Isiolo",
+  "Kajiado",
+  "Kakamega",
+  "Kericho",
+  "Kiambu",
+  "Kilifi",
+  "Kirinyaga",
+  "Kisii",
+  "Kisumu",
+  "Kitui",
+  "Kwale",
+  "Laikipia",
+  "Lamu",
+  "Machakos",
+  "Makueni",
+  "Mandera",
+  "Marsabit",
+  "Meru",
+  "Migori",
+  "Mombasa",
+  "Murang'a",
+  "Nairobi",
+  "Nakuru",
+  "Nandi",
+  "Narok",
+  "Nyamira",
+  "Nyandarua",
+  "Nyeri",
+  "Samburu",
+  "Siaya",
+  "Taita",
+  "Tana River",
+  "Tharaka-Nithi",
+  "Trans Nzoia",
+  "Turkana",
+  "Uasin Gishu",
+  "Vihiga",
+  "Wajir",
+  "West Pokot",
+];
+
+Widget _buildProfileField({
+  required BuildContext context,
+  required IconData icon,
+  required String label,
+  required String value,
+  required bool isEditable,
+  ValueChanged<String>? onChanged,
+}) {
+  final colorScheme = Theme.of(context).colorScheme;
+
+  return Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Row(
+        children: [
+          Icon(icon, color: colorScheme.onSurface.withAlpha(150), size: 20),
+          const SizedBox(width: 12),
+          Text(
+            label,
+            style: GoogleFonts.poppins(
+              fontSize: 14,
+              color: colorScheme.onSurface.withAlpha(200),
+            ),
+          ),
+        ],
+      ),
+      const SizedBox(height: 8),
+      Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        decoration: BoxDecoration(
+          color: colorScheme.surfaceContainerHighest,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: isEditable
+            ? TextFormField(
+                initialValue: value,
+                style: GoogleFonts.poppins(fontSize: 16),
+                decoration: const InputDecoration.collapsed(hintText: ''),
+                onChanged: onChanged,
+              )
+            : Text(value, style: GoogleFonts.poppins(fontSize: 16)),
+      ),
+    ],
+  );
+}
+
+/// FIXED Dropdown Widget
 Widget _buildDropdownField({
   required BuildContext context,
   required IconData icon,
@@ -486,18 +443,21 @@ Widget _buildDropdownField({
 }) {
   final colorScheme = Theme.of(context).colorScheme;
 
+  // Prevent crash if value not found
+  final safeValue = options.contains(value) ? value : null;
+
   return Column(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
       Row(
         children: [
-          Icon(icon, color: colorScheme.onSurface.withAlpha(153), size: 20),
+          Icon(icon, color: colorScheme.onSurface.withAlpha(150), size: 20),
           const SizedBox(width: 12),
           Text(
             label,
             style: GoogleFonts.poppins(
               fontSize: 14,
-              color: colorScheme.onSurface.withAlpha(204),
+              color: colorScheme.onSurface.withAlpha(200),
             ),
           ),
         ],
@@ -510,21 +470,17 @@ Widget _buildDropdownField({
           borderRadius: BorderRadius.circular(12),
         ),
         child: DropdownButtonFormField<String>(
-          value: value,
+          value: safeValue,
           decoration: const InputDecoration(border: InputBorder.none),
-          items: options.map((e) {
-            return DropdownMenuItem(
-              value: e,
-              child: Text(
-                e,
-                style: GoogleFonts.poppins(
-                  fontSize: 16,
-                  color: colorScheme.onSurface,
+          items: options
+              .map(
+                (e) => DropdownMenuItem(
+                  value: e,
+                  child: Text(e, style: GoogleFonts.poppins(fontSize: 16)),
                 ),
-              ),
-            );
-          }).toList(),
-          onChanged: (val) => onChanged(val!),
+              )
+              .toList(),
+          onChanged: (v) => onChanged(v!),
         ),
       ),
     ],

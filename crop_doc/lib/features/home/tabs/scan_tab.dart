@@ -2,7 +2,6 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:crop_doc/core/database/models/crop_model.dart';
 import 'package:crop_doc/core/providers/model_providers.dart';
-import 'package:crop_doc/shared/widgets/go_to_dev_tools.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:go_router/go_router.dart';
@@ -477,7 +476,6 @@ class ScanPage extends HookConsumerWidget {
                   ),
 
               const SizedBox(height: 90),
-              const GoToDevToolsButton(),
             ],
           ),
         ),
