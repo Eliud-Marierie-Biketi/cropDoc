@@ -451,14 +451,6 @@ class ResultsPage extends HookConsumerWidget {
     try {
       final notifier = ref.read(historyRefreshProvider.notifier);
 
-      final directory = await getApplicationDocumentsDirectory();
-      final fileName = '${DateTime.now().millisecondsSinceEpoch}.png';
-      await _screenshotController.captureAndSave(
-        directory.path,
-        fileName: fileName,
-      );
-      final filePath = '${directory.path}/$fileName';
-
       final disease = resultData?['result'] ?? "Unknown";
       final confidence = (resultData?['confidence'] as num?)?.toDouble() ?? 0.0;
 
@@ -502,12 +494,12 @@ class ResultsPage extends HookConsumerWidget {
       }
 
       await notifier.saveHistory(
-        imageUrl: filePath,
+        imageUrl: imageFile?.path ?? "",
         cropName: "Maize",
         disease: disease,
         confidence: confidence,
         recommendations: recommendations,
-        date: DateTime.now().toIso8601String(), // <--- Add this
+        date: DateTime.now().toIso8601String(),
       );
 
       if (context.mounted) {

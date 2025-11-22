@@ -188,14 +188,17 @@ class ScanPage extends HookConsumerWidget {
           final modelClass = data['result']?.toString() ?? "";
 
           final diseaseMapping = {
-            "Grey Leaf Spot": {"db_id": 6, "db_name": "Gray Leaf Spot"},
-            "Common Rust": {"db_id": 2, "db_name": "Common Rust"},
+            "Grey Leaf Spot": {"db_id": 13, "db_name": "Grey Leaf Spot"},
+            "Common Rust": {"db_id": 11, "db_name": "Common Rust"},
             "Northern Leaf Blight": {
-              "db_id": 7,
+              "db_id": 12,
               "db_name": "Northern Leaf Blight",
             },
-            "Fall Army Worm": {"db_id": 8, "db_name": "Fall Armyworm"},
-            "Northern Leaf Spot": {"db_id": 9, "db_name": "Northern Leaf Spot"},
+            "Fall Army Worm": {"db_id": 10, "db_name": "Fall Army Worm"},
+            "Northern Leaf Spot": {
+              "db_id": 14,
+              "db_name": "Northern Leaf Spot",
+            },
           };
 
           List<dynamic>? recommendations;
@@ -204,7 +207,7 @@ class ScanPage extends HookConsumerWidget {
             final diseaseInfo = diseaseMapping[modelClass];
             if (diseaseInfo != null) {
               final recUrl =
-                  "https://cropdoc-f4xk.onrender.com/api/get-treatment/?id=${diseaseInfo["db_id"]}";
+                  "https://cropdoc-f4xk.onrender.com/api/get-treatment/?name=${diseaseInfo["db_name"]}";
               final recRes = await http.get(Uri.parse(recUrl));
               if (recRes.statusCode == 200 && recRes.body.isNotEmpty) {
                 final decoded = jsonDecode(recRes.body);

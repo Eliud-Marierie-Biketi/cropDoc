@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:crop_doc/core/database/models/history_model.dart';
 import 'package:crop_doc/core/providers/model_providers.dart';
+import 'package:crop_doc/features/result/results_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -121,7 +122,7 @@ class _HistoryPageState extends ConsumerState<HistoryPage> {
             Icon(Icons.chevron_right, color: colorScheme.primary),
           ],
         ),
-        onTap: () => _showDetailsDialog(context, treatment),
+        onTap: () => _openResultsPage(context, treatment),
       ),
     );
   }
@@ -140,135 +141,27 @@ class _HistoryPageState extends ConsumerState<HistoryPage> {
     }
     return const Icon(Icons.image_not_supported, size: 50);
   }
+}
 
-  void _showDetailsDialog(BuildContext context, HistoryModel t) {
-    final recommendations = t.recommendations;
+void _openResultsPage(BuildContext context, HistoryModel t) {
+  // Convert saved history into the structure ResultsPage expects
+  final resultData = {
+    "result": t.disease,
+    "confidence": t.confidence,
+    "recommendations": t.recommendations,
+    "lime_image": null, // You can load your LIME image here if stored
+    "saved_image": t.imageUrl, // Keep for completeness
+  };
 
-    showDialog(
-      context: context,
-      builder: (_) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-        title: Text(
-          t.disease,
-          style: GoogleFonts.poppins(fontSize: 20, fontWeight: FontWeight.w600),
-        ),
-        content: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _infoRow("Crop", t.cropName),
-              _infoRow("Confidence", "${(t.confidence).toStringAsFixed(2)}%"),
-              const SizedBox(height: 14),
-
-              if (recommendations.isNotEmpty) ...[
-                Text(
-                  "Recommendations",
-                  style: GoogleFonts.poppins(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const SizedBox(height: 6),
-
-                ...recommendations.map((rec) {
-                  String formatted = "";
-
-                  if (rec is Map) {
-                    formatted = rec.entries
-                        .map(
-                          (e) =>
-                              "${e.key.toString().trim()}: ${e.value.toString().trim()}",
-                        )
-                        .join("\n");
-                  } else {
-                    formatted = rec.toString();
-                  }
-
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 3),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text("• "),
-                        Expanded(
-                          child: RichText(
-                            text: TextSpan(
-                              style: GoogleFonts.poppins(
-                                fontSize: 13.5,
-                                height: 1.25,
-                                color: Colors.black,
-                              ),
-                              children: formatted.split("\n").map((line) {
-                                final parts = line.split(":");
-                                if (parts.length < 2)
-                                  return TextSpan(text: line);
-
-                                final key = parts[0].trim();
-                                final value = parts.sublist(1).join(":").trim();
-
-                                return TextSpan(
-                                  children: [
-                                    TextSpan(
-                                      text: "$key: ",
-                                      style: const TextStyle(
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                    TextSpan(text: "$value\n"),
-                                  ],
-                                );
-                              }).toList(),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
-                }),
-              ] else
-                Text(
-                  "No recommendations available.",
-                  style: GoogleFonts.poppins(
-                    fontSize: 13.5,
-                    fontStyle: FontStyle.italic,
-                    color: Colors.grey[600],
-                  ),
-                ),
-            ],
-          ),
-        ),
-        actionsAlignment: MainAxisAlignment.end,
-        actions: [
-          TextButton(
-            style: TextButton.styleFrom(foregroundColor: Colors.green.shade800),
-            onPressed: () => Navigator.pop(context),
-            child: Text(
-              "Close",
-              style: GoogleFonts.poppins(fontWeight: FontWeight.w500),
-            ),
-          ),
-        ],
-      ),
-    );
+  File? imageFile;
+  if (t.imageUrl.isNotEmpty && File(t.imageUrl).existsSync()) {
+    imageFile = File(t.imageUrl);
   }
 
-  Widget _infoRow(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Row(
-        children: [
-          Text(
-            "$label: ",
-            style: GoogleFonts.poppins(
-              fontWeight: FontWeight.w600,
-              fontSize: 14,
-            ),
-          ),
-          Expanded(
-            child: Text(value, style: GoogleFonts.poppins(fontSize: 14)),
-          ),
-        ],
-      ),
-    );
-  }
+  Navigator.push(
+    context,
+    MaterialPageRoute(
+      builder: (_) => ResultsPage(resultData: resultData, imageFile: imageFile),
+    ),
+  );
 }
